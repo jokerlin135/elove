@@ -1,8 +1,8 @@
-app = "elove-build-worker"
+app = "elove"
 primary_region = "sin"
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = "apps/worker/Dockerfile"
 
 [[vm]]
   memory = "2gb"
