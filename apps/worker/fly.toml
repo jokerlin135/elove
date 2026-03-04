@@ -1,16 +1,23 @@
-app = "elove-build-worker"
-primary_region = "sin"
+# fly.toml app configuration file generated for elove on 2026-03-04T13:11:09Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'elove'
+primary_region = 'iad'
 
 [build]
-  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
 
 [[vm]]
-  memory = "2gb"
-  cpu_kind = "shared"
-  cpus = 2
-
-[env]
-  NODE_ENV = "production"
-
-[processes]
-  worker = "npx tsx src/index.ts"
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 1024
