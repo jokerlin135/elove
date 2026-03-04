@@ -35,7 +35,12 @@ export class ProjectsService {
 
     // 3. Fetch template bundle from R2
     const bundleRaw = await this.r2.get(template.r2_bundle_key);
-    const bundle = JSON.parse(bundleRaw);
+    let bundle;
+    try {
+      bundle = JSON.parse(bundleRaw);
+    } catch (e) {
+      throw new Error("Bundle template không hợp lệ");
+    }
 
     // 4. Deep-copy document + theme from bundle
     const projectId = randomUUID();
@@ -89,10 +94,23 @@ export class ProjectsService {
       this.r2.get(`projects/${tenantId}/${projectId}/theme.json`),
     ]);
 
+    let document;
+    let theme;
+    try {
+      document = JSON.parse(docRaw);
+    } catch (e) {
+      throw new Error("Dữ liệu thiệp không hợp lệ");
+    }
+    try {
+      theme = JSON.parse(themeRaw);
+    } catch (e) {
+      throw new Error("Dữ liệu chủ đề không hợp lệ");
+    }
+
     return {
       project,
-      document: JSON.parse(docRaw),
-      theme: JSON.parse(themeRaw),
+      document,
+      theme,
     };
   }
 

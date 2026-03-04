@@ -22,7 +22,7 @@ export function EditorProvider({
   const [store, setStore] = useState<EditorStore | null>(null);
   const storeRef = useRef<EditorStore | null>(null);
 
-  const { data, isLoading } = trpc.projects.get.useQuery({ projectId });
+  const { data, isLoading, error } = trpc.projects.get.useQuery({ projectId });
   const updateMutation = trpc.projects.update.useMutation();
 
   useEffect(() => {
@@ -61,6 +61,18 @@ export function EditorProvider({
     }, 3000);
     return () => clearInterval(interval);
   }, [projectId]);
+
+  if (error) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#080810] text-white">
+        <div className="text-center">
+          <div className="text-4xl mb-3 opacity-30">!</div>
+          <p className="text-white/60 text-sm mb-2">Không thể tải thiệp</p>
+          <p className="text-red-400/70 text-xs">{error.message}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading || !store) {
     return (
