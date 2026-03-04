@@ -4,8 +4,8 @@ compatibility_date = "2024-01-01"
 account_id = "e7eb76be9606c762e0b3ec91ae619424"
 
 kv_namespaces = [
-  { binding = "ROUTING_TABLE", id = "PLACEHOLDER_KV_ID", preview_id = "PLACEHOLDER_KV_ID" },
-  { binding = "DNS_MAP", id = "PLACEHOLDER_DNS_MAP_ID", preview_id = "PLACEHOLDER_DNS_MAP_ID" }
+  { binding = "ROUTING_TABLE", id = "1a32b8e4824749608f73f52de8ecc193", preview_id = "1a32b8e4824749608f73f52de8ecc193" },
+  { binding = "DNS_MAP", id = "a775d78ca325468a83fcba6ba13b80fb", preview_id = "a775d78ca325468a83fcba6ba13b80fb" }
 ]
 
 [[r2_buckets]]

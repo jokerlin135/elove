@@ -4,9 +4,9 @@ compatibility_date = "2024-01-01"
 account_id = "e7eb76be9606c762e0b3ec91ae619424"
 
 kv_namespaces = [
-  { binding = "ROUTING_TABLE", id = "PLACEHOLDER_KV_ID", preview_id = "PLACEHOLDER_KV_ID" },
-  { binding = "KV", id = "PLACEHOLDER_KV_RSVP_ID", preview_id = "PLACEHOLDER_KV_RSVP_ID" }
+  { binding = "ROUTING_TABLE", id = "1a32b8e4824749608f73f52de8ecc193", preview_id = "1a32b8e4824749608f73f52de8ecc193" },
+  { binding = "KV", id = "00636d708edd4cec8b3d67b1765f0316", preview_id = "00636d708edd4cec8b3d67b1765f0316" }
 ]
 
 [vars]
-API_URL = "https://api.elove.me"
+API_URL = "https://elove-xi.vercel.app"
