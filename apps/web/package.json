@@ -19,6 +19,7 @@
     "@trpc/client": "^10.45.4",
     "@trpc/react-query": "^10.45.4",
     "@trpc/server": "^10.45.4",
+    "idb": "^8.0.3",
     "immer": "^11.1.4",
     "next": "^15.0.0",
     "react": "^19.0.0",
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",
+    "@types/lodash-es": "^4.17.12",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
