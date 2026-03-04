@@ -1,21 +1,50 @@
 "use client";
+import Link from "next/link";
+import { useStore } from "zustand";
+import { useEditorStore } from "./EditorProvider";
 
-interface ToolbarProps {
-  projectId: string;
-}
+export function Toolbar({ projectId }: { projectId: string }) {
+  const store = useEditorStore();
 
-export function Toolbar({ projectId }: ToolbarProps) {
+  const dirty = useStore(store, (s) => s.dirty);
+  const canUndo = useStore(store, (s) => s.undoStack.length > 0);
+  const canRedo = useStore(store, (s) => s.redoStack.length > 0);
+
   return (
-    <header className="h-12 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0">
-      <div className="flex items-center gap-2">
-        <span className="font-semibold text-gray-800">ELove Editor</span>
-        <span className="text-xs text-gray-400 font-mono">{projectId}</span>
+    <header className="h-12 bg-[#0d0d1a] border-b border-white/8 flex items-center justify-between px-4 shrink-0 text-white">
+      <div className="flex items-center gap-3">
+        <Link
+          href="/dashboard"
+          className="text-white/40 hover:text-white transition-colors text-sm"
+        >
+          ← Dashboard
+        </Link>
+        <span className="text-white/20">|</span>
+        {dirty && (
+          <span className="text-xs text-amber-400/60">● Chưa lưu</span>
+        )}
       </div>
       <div className="flex items-center gap-2">
-        <button className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded">
+        <button
+          onClick={() => store.getState().undo()}
+          disabled={!canUndo}
+          className="p-1.5 text-white/40 hover:text-white disabled:opacity-20 transition-colors"
+          title="Undo (Ctrl+Z)"
+        >
+          ↩
+        </button>
+        <button
+          onClick={() => store.getState().redo()}
+          disabled={!canRedo}
+          className="p-1.5 text-white/40 hover:text-white disabled:opacity-20 transition-colors"
+          title="Redo (Ctrl+Y)"
+        >
+          ↪
+        </button>
+        <button className="px-3 py-1.5 text-xs text-white/50 hover:text-white border border-white/10 rounded-lg transition-colors">
           Xem trước
         </button>
-        <button className="px-4 py-1 text-sm bg-rose-500 text-white rounded hover:bg-rose-600">
+        <button className="px-4 py-1.5 text-xs bg-gradient-to-r from-rose-500 to-pink-600 rounded-lg font-medium hover:opacity-90">
           Xuất bản
         </button>
       </div>
