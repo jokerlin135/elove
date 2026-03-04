@@ -2,7 +2,7 @@ app = "elove"
 primary_region = "sin"
 
 [build]
-  dockerfile = "apps/worker/Dockerfile"
+  dockerfile = "Dockerfile"
 
 [[vm]]
   memory = "2gb"
