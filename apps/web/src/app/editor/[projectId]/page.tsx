@@ -1,3 +1,5 @@
+import { TRPCProvider } from "../../../components/TRPCProvider";
+import { EditorProvider } from "../../../components/editor/EditorProvider";
 import { EditorLayout } from "../../../components/editor/EditorLayout";
 
 interface EditorPageProps {
@@ -6,9 +8,13 @@ interface EditorPageProps {
 
 export default async function EditorPage({ params }: EditorPageProps) {
   const { projectId } = await params;
-  return <EditorLayout projectId={projectId} />;
+  return (
+    <TRPCProvider>
+      <EditorProvider projectId={projectId}>
+        <EditorLayout projectId={projectId} />
+      </EditorProvider>
+    </TRPCProvider>
+  );
 }
 
-export const metadata = {
-  title: "Editor — ELove",
-};
+export const metadata = { title: "Editor — ELove" };
