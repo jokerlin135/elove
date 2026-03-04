@@ -27,7 +27,9 @@ function createMockPayos(checkoutUrl = "https://pay.payos.vn/web/test-link") {
   } as unknown as import("@payos/node").PayOS;
 }
 
-function createTestDb(overrides: Partial<ReturnType<typeof buildDefaultDb>> = {}) {
+function createTestDb(
+  overrides: Partial<ReturnType<typeof buildDefaultDb>> = {},
+) {
   return { ...buildDefaultDb(), ...overrides } as unknown as Db;
 }
 
@@ -165,7 +167,9 @@ describe("BillingService", () => {
       expect(mockPayos.paymentRequests.create).toHaveBeenCalledWith(
         expect.objectContaining({ amount: expect.any(Number) }),
       );
-      const callArg = (mockPayos.paymentRequests.create as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      const callArg = (
+        mockPayos.paymentRequests.create as ReturnType<typeof vi.fn>
+      ).mock.calls[0][0];
       expect(callArg.amount).toBeGreaterThan(0);
     });
 
@@ -214,7 +218,9 @@ describe("BillingService", () => {
         billingCycle: "monthly",
       });
 
-      const call = (mockPayos.paymentRequests.create as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      const call = (
+        mockPayos.paymentRequests.create as ReturnType<typeof vi.fn>
+      ).mock.calls[0][0];
       expect(call.returnUrl).toContain("test.elove.vn");
       expect(call.cancelUrl).toContain("test.elove.vn");
 
@@ -235,7 +241,9 @@ describe("BillingService", () => {
       const service = new BillingService(mockPayos, db);
       await service.cancelSubscription("tenant-1");
 
-      expect((db as ReturnType<typeof buildDefaultDb>).update).toHaveBeenCalled();
+      expect(
+        (db as unknown as ReturnType<typeof buildDefaultDb>).update,
+      ).toHaveBeenCalled();
     });
   });
 });

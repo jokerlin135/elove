@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { AutosaveManager } from "../autosave";
 import type { ProjectDocument, Theme } from "@elove/shared";
 
-function buildDoc(overrides?: Partial<ProjectDocument["content"]["data"]["couple"]>): ProjectDocument {
+function buildDoc(
+  overrides?: Partial<ProjectDocument["content"]["data"]["couple"]>,
+): ProjectDocument {
   return {
     schema_version: 1,
     structure: {
@@ -11,7 +13,14 @@ function buildDoc(overrides?: Partial<ProjectDocument["content"]["data"]["couple
     },
     content: {
       data: {
-        couple: { partner1: "Anh", partner2: "Em", weddingDate: "2026-06-15", venue: "", story: "", ...overrides },
+        couple: {
+          partner1: "Anh",
+          partner2: "Em",
+          weddingDate: "2026-06-15",
+          venue: "",
+          story: "",
+          ...overrides,
+        },
         event: { ceremonies: [], receptions: [], afterParties: [] },
         gallery: { albums: [] },
         rsvp: { formFields: [], deadline: null },
@@ -24,7 +33,11 @@ function buildDoc(overrides?: Partial<ProjectDocument["content"]["data"]["couple
       sectionBehaviors: {},
       pageTransitions: { type: "fade", duration: 300, easing: "ease" },
       globalBehaviors: { smoothScroll: true, lazyLoad: true, prefetch: false },
-      accessibilityFallback: { reducedMotion: true, highContrast: false, screenReader: true },
+      accessibilityFallback: {
+        reducedMotion: true,
+        highContrast: false,
+        screenReader: true,
+      },
     },
   };
 }
@@ -33,29 +46,45 @@ function buildTheme(): Theme {
   return {
     baseThemeId: "minimal",
     tokens: {
-      color: { primary: "#1A1A1A", secondary: "#666", accent: "#FF6B6B",
-        background: "#FFF", surface: "#F5F5F5", text: "#1A1A1A", textMuted: "#999" },
+      color: {
+        primary: "#1A1A1A",
+        secondary: "#666",
+        accent: "#FF6B6B",
+        background: "#FFF",
+        surface: "#F5F5F5",
+        text: "#1A1A1A",
+        textMuted: "#999",
+      },
       typography: {
         heading: { family: "Inter", weight: "700", sizes: { xl: "2.5rem" } },
         body: { family: "Inter", weight: "400", sizes: { md: "1rem" } },
       },
       spacing: { section: "3rem", element: "1rem", page: "1.5rem" },
       border: { radius: "2px", width: "1px", color: "#E5E5E5" },
-      shadow: { sm: "0 1px 2px rgba(0,0,0,0.05)", md: "0 2px 8px rgba(0,0,0,0.08)", lg: "0 4px 16px rgba(0,0,0,0.1)" },
+      shadow: {
+        sm: "0 1px 2px rgba(0,0,0,0.05)",
+        md: "0 2px 8px rgba(0,0,0,0.08)",
+        lg: "0 4px 16px rgba(0,0,0,0.1)",
+      },
       animation: { duration: "300ms", easing: "ease", stagger: "50ms" },
     },
   };
 }
 
 describe("AutosaveManager", () => {
-  let mockR2Put: ReturnType<typeof vi.fn>;
-  let mockPatchRevision: ReturnType<typeof vi.fn>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockR2Put: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockPatchRevision: any;
   let manager: AutosaveManager;
 
   beforeEach(() => {
     mockR2Put = vi.fn().mockResolvedValue(undefined);
     mockPatchRevision = vi.fn().mockResolvedValue(undefined);
-    manager = new AutosaveManager({ r2Put: mockR2Put, patchRevision: mockPatchRevision });
+    manager = new AutosaveManager({
+      r2Put: mockR2Put,
+      patchRevision: mockPatchRevision,
+    });
   });
 
   it("saves to R2 on first call", async () => {
@@ -85,7 +114,7 @@ describe("AutosaveManager", () => {
   it("retries up to 3 times on R2 failure then throws", async () => {
     mockR2Put.mockRejectedValue(new Error("R2 unavailable"));
     await expect(
-      manager.save(buildDoc(), buildTheme(), "t1", "p1", 0)
+      manager.save(buildDoc(), buildTheme(), "t1", "p1", 0),
     ).rejects.toThrow("R2 unavailable");
     // 3 attempts (original + 2 retries) = 6 calls total (3 per file × 2 files)
     // But we stop on first file failure before trying second
