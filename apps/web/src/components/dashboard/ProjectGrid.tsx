@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { trpc } from "../../lib/trpc";
 import { ProjectCard } from "./ProjectCard";
+import { CreateProjectModal } from "./CreateProjectModal";
 
 export function ProjectGrid() {
   const [showCreate, setShowCreate] = useState(false);
@@ -14,7 +15,10 @@ export function ProjectGrid() {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="rounded-2xl bg-white/5 animate-pulse aspect-[4/5]" />
+          <div
+            key={i}
+            className="rounded-2xl bg-white/5 animate-pulse aspect-[4/5]"
+          />
         ))}
       </div>
     );
@@ -59,19 +63,8 @@ export function ProjectGrid() {
           </button>
         </div>
       )}
-      {/* CreateProjectModal will be added in Task 7 */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-[#0f0f1e] border border-white/10 rounded-2xl p-8 text-white">
-            <p className="mb-4">Tinh nang dang duoc phat trien...</p>
-            <button
-              onClick={() => setShowCreate(false)}
-              className="px-4 py-2 bg-rose-500 rounded-lg"
-            >
-              Dong
-            </button>
-          </div>
-        </div>
+        <CreateProjectModal onClose={() => setShowCreate(false)} />
       )}
     </>
   );
