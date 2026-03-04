@@ -1,0 +1,16 @@
+app = "elove-build-worker"
+primary_region = "sin"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[[vm]]
+  memory = "2gb"
+  cpu_kind = "shared"
+  cpus = 2
+
+[env]
+  NODE_ENV = "production"
+
+[processes]
+  worker = "npx tsx src/index.ts"
