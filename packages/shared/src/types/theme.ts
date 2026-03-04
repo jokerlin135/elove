@@ -54,8 +54,4 @@ export interface ThemeTokens {
   animation: AnimationTokens;
 }
 
-export interface Theme {
-  baseThemeId: string;
-  tokens: ThemeTokens;
-  overrides?: Record<string, unknown>;
-}
+// Theme type is re-exported from ../schemas/document.schema as z.infer<typeof ThemeSchema>

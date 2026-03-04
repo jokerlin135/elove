@@ -2,7 +2,7 @@
 export * from "./types/document";
 export * from "./types/theme";
 export { ProjectDocumentSchema, ThemeSchema } from "./schemas/document.schema";
-export type { ProjectDocument } from "./schemas/document.schema";
+export type { ProjectDocument, Theme } from "./schemas/document.schema";
 export * from "./utils/merge-deep";
 export * from "./db";
 export * from "./registry/component-registry";
