@@ -1,0 +1,12 @@
+name = "elove-rsvp-submit"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+account_id = "e7eb76be9606c762e0b3ec91ae619424"
+
+kv_namespaces = [
+  { binding = "ROUTING_TABLE", id = "PLACEHOLDER_KV_ID", preview_id = "PLACEHOLDER_KV_ID" },
+  { binding = "KV", id = "PLACEHOLDER_KV_RSVP_ID", preview_id = "PLACEHOLDER_KV_RSVP_ID" }
+]
+
+[vars]
+API_URL = "https://api.elove.me"
