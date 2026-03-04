@@ -5,3 +5,5 @@ export * from "./schemas/document.schema";
 export * from "./utils/merge-deep";
 export * from "./db";
 export * from "./registry/component-registry";
+export * from "./theme/system-themes";
+export * from "./theme/resolve-theme";
