@@ -1,0 +1,16 @@
+{
+  "name": "@elove/worker",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@elove/shared": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
