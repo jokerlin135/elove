@@ -1,0 +1,158 @@
+// ========== TYPES ==========
+
+export interface ComponentDefinition {
+  type: string;
+  displayName: string;
+  category: "content" | "media" | "decoration" | "interactive";
+  defaultProps: Record<string, unknown>;
+  renderStatic: (
+    props: Record<string, unknown>,
+    tokens: Record<string, string>
+  ) => string;
+}
+
+// ========== HELPERS ==========
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// ========== REGISTRY ==========
+
+export const ComponentRegistry = new Map<string, ComponentDefinition>();
+
+// TEXT
+ComponentRegistry.set("text", {
+  type: "text",
+  displayName: "Text",
+  category: "content",
+  defaultProps: { content: "Nhập nội dung...", variant: "body" },
+  renderStatic: (props, tokens) => {
+    const { content = "", variant = "body" } = props as {
+      content: string;
+      variant: string;
+    };
+    const tag =
+      variant === "heading" ? "h2" : variant === "caption" ? "small" : "p";
+    const color = tokens["--color-text"] ?? "inherit";
+    return `<${tag} class="elove-text elove-text--${variant}" style="color:${color}">${escapeHtml(String(content))}</${tag}>`;
+  },
+});
+
+// IMAGE
+ComponentRegistry.set("image", {
+  type: "image",
+  displayName: "Image",
+  category: "media",
+  defaultProps: { mediaId: "", alt: "", fit: "cover" },
+  renderStatic: (props, _tokens) => {
+    const { mediaId = "", alt = "", fit = "cover" } = props as {
+      mediaId: string;
+      alt: string;
+      fit: string;
+    };
+    if (!mediaId) {
+      return `<div class="elove-image elove-image--placeholder" aria-hidden="true"></div>`;
+    }
+    return `<img class="elove-image" src="/__media/${escapeHtml(mediaId)}/original" alt="${escapeHtml(alt)}" style="object-fit:${fit}" loading="lazy" />`;
+  },
+});
+
+// VIDEO
+ComponentRegistry.set("video", {
+  type: "video",
+  displayName: "Video",
+  category: "media",
+  defaultProps: { url: "", autoplay: false, loop: false },
+  renderStatic: (props, _tokens) => {
+    const { url = "", autoplay = false, loop = false } = props as {
+      url: string;
+      autoplay: boolean;
+      loop: boolean;
+    };
+    const attrs = [
+      autoplay ? "autoplay muted" : "",
+      loop ? "loop" : "",
+      "playsinline",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    return `<video class="elove-video" src="${escapeHtml(url)}" ${attrs}></video>`;
+  },
+});
+
+// SHAPE
+ComponentRegistry.set("shape", {
+  type: "shape",
+  displayName: "Shape",
+  category: "decoration",
+  defaultProps: { shape: "rect", fill: "#f0f0f0", stroke: "transparent" },
+  renderStatic: (props, _tokens) => {
+    const {
+      shape = "rect",
+      fill = "#f0f0f0",
+      stroke = "transparent",
+    } = props as { shape: string; fill: string; stroke: string };
+    const borderRadius = shape === "circle" ? "border-radius:50%" : "";
+    return `<div class="elove-shape elove-shape--${shape}" style="background:${fill};border:2px solid ${stroke};${borderRadius}"></div>`;
+  },
+});
+
+// BUTTON
+ComponentRegistry.set("button", {
+  type: "button",
+  displayName: "Button",
+  category: "interactive",
+  defaultProps: { label: "Nhấn vào đây", action: "url", target: "" },
+  renderStatic: (props, tokens) => {
+    const { label = "", action = "url", target = "" } = props as {
+      label: string;
+      action: string;
+      target: string;
+    };
+    const href =
+      action === "scroll"
+        ? `#${target}`
+        : action === "rsvp"
+          ? "#rsvp"
+          : escapeHtml(target);
+    const bg = tokens["--color-primary"] ?? "#333";
+    return `<a class="elove-button" href="${href}" style="background:${bg}">${escapeHtml(String(label))}</a>`;
+  },
+});
+
+// ICON
+ComponentRegistry.set("icon", {
+  type: "icon",
+  displayName: "Icon",
+  category: "decoration",
+  defaultProps: { name: "heart", size: 24, color: "#333" },
+  renderStatic: (props, _tokens) => {
+    const { name = "heart", size = 24, color = "#333" } = props as {
+      name: string;
+      size: number;
+      color: string;
+    };
+    return `<span class="elove-icon elove-icon--${escapeHtml(String(name))}" style="font-size:${Number(size)}px;color:${color}" aria-hidden="true"></span>`;
+  },
+});
+
+// DIVIDER
+ComponentRegistry.set("divider", {
+  type: "divider",
+  displayName: "Divider",
+  category: "decoration",
+  defaultProps: { style: "solid", thickness: 1 },
+  renderStatic: (props, tokens) => {
+    const { style = "solid", thickness = 1 } = props as {
+      style: string;
+      thickness: number;
+    };
+    const color = tokens["--color-accent"] ?? "#ccc";
+    return `<hr class="elove-divider" style="border-style:${style};border-width:${Number(thickness)}px;border-color:${color}" />`;
+  },
+});

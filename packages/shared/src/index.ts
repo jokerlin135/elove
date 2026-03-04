@@ -4,3 +4,4 @@ export * from "./types/theme";
 export * from "./schemas/document.schema";
 export * from "./utils/merge-deep";
 export * from "./db";
+export * from "./registry/component-registry";
