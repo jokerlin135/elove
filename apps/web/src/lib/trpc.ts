@@ -9,7 +9,7 @@ export const trpc: CreateTRPCReact<AppRouter, unknown, null> =
 export function makeTRPCClient() {
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
 
   return trpc.createClient({
@@ -17,9 +17,13 @@ export function makeTRPCClient() {
       httpBatchLink({
         url: "/api/trpc",
         async headers() {
-          const { data } = await supabase.auth.getSession();
-          const token = data.session?.access_token;
-          return token ? { authorization: `Bearer ${token}` } : {};
+          try {
+            const { data } = await supabase.auth.getSession();
+            const token = data.session?.access_token;
+            return token ? { authorization: `Bearer ${token}` } : {};
+          } catch {
+            return {};
+          }
         },
       }),
     ],
