@@ -9,10 +9,7 @@ const createInput = z.object({
     .string()
     .min(3)
     .max(80)
-    .regex(
-      /^[a-z0-9-]+$/,
-      "Slug chỉ chứa chữ thường, số và dấu gạch ngang",
-    ),
+    .regex(/^[a-z0-9-]+$/, "Slug chỉ chứa chữ thường, số và dấu gạch ngang"),
 });
 
 export const projectsRouter = router({
@@ -47,5 +44,23 @@ export const projectsRouter = router({
     .mutation(async ({ input, ctx }) => {
       const service = new ProjectsService(ctx.db, ctx.r2);
       return service.archive(input.projectId, ctx.tenantId);
+    }),
+
+  update: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string().uuid(),
+        documentJson: z.string(),
+        themeJson: z.string(),
+        editRevision: z.number().int().min(0),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const service = new ProjectsService(ctx.db, ctx.r2);
+      return service.update(input.projectId, ctx.tenantId, {
+        documentJson: input.documentJson,
+        themeJson: input.themeJson,
+        editRevision: input.editRevision,
+      });
     }),
 });

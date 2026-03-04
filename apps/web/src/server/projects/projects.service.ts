@@ -48,11 +48,9 @@ export class ProjectsService {
       JSON.stringify({ ...bundle.document, schema_version: 1 }),
       { contentType: "application/json" },
     );
-    await this.r2.put(
-      themePath,
-      JSON.stringify(bundle.theme),
-      { contentType: "application/json" },
-    );
+    await this.r2.put(themePath, JSON.stringify(bundle.theme), {
+      contentType: "application/json",
+    });
 
     // 6. Insert project row to DB
     await this.db.insert(projects).values({
@@ -111,5 +109,42 @@ export class ProjectsService {
       .update(projects)
       .set({ status: "archived" })
       .where(and(eq(projects.id, projectId), eq(projects.tenant_id, tenantId)));
+  }
+
+  async update(
+    projectId: string,
+    tenantId: string,
+    payload: {
+      documentJson: string;
+      themeJson: string;
+      editRevision: number;
+    },
+  ) {
+    const { eq, and } = await import("drizzle-orm");
+
+    const project = await this.db.query.projects.findFirst({
+      where: (p, { eq: eqFn, and: andFn }) =>
+        andFn(eqFn(p.id, projectId), eqFn(p.tenant_id, tenantId)),
+    });
+    if (!project) throw new Error("Project không tìm thấy");
+
+    const docPath = project.r2_document_key;
+    const themePath = `projects/${tenantId}/${projectId}/theme.json`;
+
+    await Promise.all([
+      this.r2.put(docPath, payload.documentJson, {
+        contentType: "application/json",
+      }),
+      this.r2.put(themePath, payload.themeJson, {
+        contentType: "application/json",
+      }),
+    ]);
+
+    await this.db
+      .update(projects)
+      .set({ edit_revision: payload.editRevision, updated_at: new Date() })
+      .where(and(eq(projects.id, projectId), eq(projects.tenant_id, tenantId)));
+
+    return { ok: true };
   }
 }
