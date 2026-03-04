@@ -11,9 +11,12 @@
     "build": "turbo build",
     "test": "turbo test",
     "typecheck": "turbo typecheck",
-    "lint": "turbo lint"
+    "lint": "turbo lint",
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "drizzle-kit": "^0.31.9",
     "tsx": "^4.21.0",
     "turbo": "^2.0.0",
