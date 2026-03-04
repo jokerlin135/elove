@@ -7,7 +7,7 @@ export interface ComponentDefinition {
   defaultProps: Record<string, unknown>;
   renderStatic: (
     props: Record<string, unknown>,
-    tokens: Record<string, string>
+    tokens: Record<string, string>,
   ) => string;
 }
 
@@ -19,6 +19,26 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function sanitizeHref(url: string): string {
+  // Block dangerous protocols (javascript:, data:, vbscript:, etc.)
+  const cleaned = url.trim().toLowerCase();
+  if (
+    cleaned.startsWith("javascript:") ||
+    cleaned.startsWith("data:") ||
+    cleaned.startsWith("vbscript:")
+  ) {
+    return "#";
+  }
+  return escapeHtml(url);
+}
+
+// Allow only safe CSS values: colors, sizes, basic strings
+// Reject anything with parentheses (url(), expression()) or semicolons
+function sanitizeCss(value: string): string {
+  const unsafe = /[(){};<>'"]/;
+  return unsafe.test(value) ? "" : value;
 }
 
 // ========== REGISTRY ==========
@@ -39,7 +59,7 @@ ComponentRegistry.set("text", {
     const tag =
       variant === "heading" ? "h2" : variant === "caption" ? "small" : "p";
     const color = tokens["--color-text"] ?? "inherit";
-    return `<${tag} class="elove-text elove-text--${variant}" style="color:${color}">${escapeHtml(String(content))}</${tag}>`;
+    return `<${tag} class="elove-text elove-text--${variant}" style="color:${sanitizeCss(color)}">${escapeHtml(String(content))}</${tag}>`;
   },
 });
 
@@ -50,7 +70,11 @@ ComponentRegistry.set("image", {
   category: "media",
   defaultProps: { mediaId: "", alt: "", fit: "cover" },
   renderStatic: (props, _tokens) => {
-    const { mediaId = "", alt = "", fit = "cover" } = props as {
+    const {
+      mediaId = "",
+      alt = "",
+      fit = "cover",
+    } = props as {
       mediaId: string;
       alt: string;
       fit: string;
@@ -58,7 +82,7 @@ ComponentRegistry.set("image", {
     if (!mediaId) {
       return `<div class="elove-image elove-image--placeholder" aria-hidden="true"></div>`;
     }
-    return `<img class="elove-image" src="/__media/${escapeHtml(mediaId)}/original" alt="${escapeHtml(alt)}" style="object-fit:${fit}" loading="lazy" />`;
+    return `<img class="elove-image" src="/__media/${escapeHtml(mediaId)}/original" alt="${escapeHtml(alt)}" style="object-fit:${sanitizeCss(fit)}" loading="lazy" />`;
   },
 });
 
@@ -69,7 +93,11 @@ ComponentRegistry.set("video", {
   category: "media",
   defaultProps: { url: "", autoplay: false, loop: false },
   renderStatic: (props, _tokens) => {
-    const { url = "", autoplay = false, loop = false } = props as {
+    const {
+      url = "",
+      autoplay = false,
+      loop = false,
+    } = props as {
       url: string;
       autoplay: boolean;
       loop: boolean;
@@ -98,7 +126,7 @@ ComponentRegistry.set("shape", {
       stroke = "transparent",
     } = props as { shape: string; fill: string; stroke: string };
     const borderRadius = shape === "circle" ? "border-radius:50%" : "";
-    return `<div class="elove-shape elove-shape--${shape}" style="background:${fill};border:2px solid ${stroke};${borderRadius}"></div>`;
+    return `<div class="elove-shape elove-shape--${shape}" style="background:${sanitizeCss(fill)};border:2px solid ${sanitizeCss(stroke)};${borderRadius}"></div>`;
   },
 });
 
@@ -109,19 +137,23 @@ ComponentRegistry.set("button", {
   category: "interactive",
   defaultProps: { label: "Nhấn vào đây", action: "url", target: "" },
   renderStatic: (props, tokens) => {
-    const { label = "", action = "url", target = "" } = props as {
+    const {
+      label = "",
+      action = "url",
+      target = "",
+    } = props as {
       label: string;
       action: string;
       target: string;
     };
     const href =
       action === "scroll"
-        ? `#${target}`
+        ? `#${escapeHtml(String(target))}`
         : action === "rsvp"
           ? "#rsvp"
-          : escapeHtml(target);
+          : sanitizeHref(String(target));
     const bg = tokens["--color-primary"] ?? "#333";
-    return `<a class="elove-button" href="${href}" style="background:${bg}">${escapeHtml(String(label))}</a>`;
+    return `<a class="elove-button" href="${href}" style="background:${sanitizeCss(bg)}">${escapeHtml(String(label))}</a>`;
   },
 });
 
@@ -132,12 +164,16 @@ ComponentRegistry.set("icon", {
   category: "decoration",
   defaultProps: { name: "heart", size: 24, color: "#333" },
   renderStatic: (props, _tokens) => {
-    const { name = "heart", size = 24, color = "#333" } = props as {
+    const {
+      name = "heart",
+      size = 24,
+      color = "#333",
+    } = props as {
       name: string;
       size: number;
       color: string;
     };
-    return `<span class="elove-icon elove-icon--${escapeHtml(String(name))}" style="font-size:${Number(size)}px;color:${color}" aria-hidden="true"></span>`;
+    return `<span class="elove-icon elove-icon--${escapeHtml(String(name))}" style="font-size:${Number(size)}px;color:${sanitizeCss(color)}" aria-hidden="true"></span>`;
   },
 });
 
@@ -153,6 +189,6 @@ ComponentRegistry.set("divider", {
       thickness: number;
     };
     const color = tokens["--color-accent"] ?? "#ccc";
-    return `<hr class="elove-divider" style="border-style:${style};border-width:${Number(thickness)}px;border-color:${color}" />`;
+    return `<hr class="elove-divider" style="border-style:${sanitizeCss(style)};border-width:${Number(thickness)}px;border-color:${sanitizeCss(color)}" />`;
   },
 });
