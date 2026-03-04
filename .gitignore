@@ -2,5 +2,9 @@ node_modules
 .next
 .turbo
 dist
-.env*
+.env
+.env.local
+.env.*.local
+# Allow template
+!.env.example
 *.log
