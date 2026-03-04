@@ -1,3 +1,6 @@
 // Shared types and utilities for ELove Platform
 export * from "./types/document";
+export * from "./types/theme";
+export * from "./schemas/document.schema";
+export * from "./utils/merge-deep";
 export * from "./db";
