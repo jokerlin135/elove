@@ -14,7 +14,7 @@ jobs:
           cache: "npm"
       - run: npm ci
       - name: Deploy to Vercel
-        run: npx vercel --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: npx vercel --prod --token "${{ secrets.VERCEL_TOKEN }}"
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
@@ -39,10 +39,10 @@ jobs:
           cache: "npm"
       - run: npm ci
       - name: Deploy site-serve
-        run: cd workers/site-serve && npx wrangler deploy --env production
+        run: cd workers/site-serve && npx wrangler deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
       - name: Deploy rsvp-submit
-        run: cd workers/rsvp-submit && npx wrangler deploy --env production
+        run: cd workers/rsvp-submit && npx wrangler deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
