@@ -2,17 +2,10 @@
 import dynamic from "next/dynamic";
 import { useMemo } from "react";
 import { createBrowserClient } from "@supabase/ssr";
+import { ThemeSupa } from "@supabase/auth-ui-shared";
 
 const Auth = dynamic(
   () => import("@supabase/auth-ui-react").then((m) => m.Auth),
-  { ssr: false }
-);
-
-const ThemeSupa = dynamic(
-  () =>
-    import("@supabase/auth-ui-shared").then((m) => ({
-      default: m.ThemeSupa,
-    })),
   { ssr: false }
 );
 
@@ -29,6 +22,7 @@ export default function LoginPage() {
 
   const appearance = useMemo(
     () => ({
+      theme: ThemeSupa,
       variables: {
         default: {
           colors: {
