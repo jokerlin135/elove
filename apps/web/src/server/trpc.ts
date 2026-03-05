@@ -1,7 +1,8 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import { createServerSupabase } from "./supabase";
-import { createDb } from "@elove/shared";
+import { createDb, tenants, users } from "@elove/shared";
 import { createR2Client } from "./r2";
+import { randomUUID } from "crypto";
 import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
 
 // Lazy singletons — initialized on first request
@@ -32,12 +33,41 @@ export async function createContext({ req }: FetchCreateContextFnOptions) {
       const { data } = await supabase.auth.getUser(token);
       if (data.user) {
         user = { id: data.user.id, email: data.user.email };
-        // Look up tenant from users table
         const db = getDb();
-        const dbUser = await db.query.users.findFirst({
+        let dbUser = await db.query.users.findFirst({
           where: (u, { eq }) => eq(u.id, data.user!.id),
         });
-        tenantId = dbUser?.tenant_id ?? null;
+        // Auto-provision: create tenant + user record if missing (email/password signup bypasses /auth/callback)
+        if (!dbUser) {
+          const email = data.user.email ?? "";
+          const slug = email
+            .split("@")[0]
+            .replace(/[^a-z0-9]/gi, "")
+            .toLowerCase();
+          const tenantId = randomUUID();
+          await db
+            .insert(tenants)
+            .values({
+              id: tenantId,
+              slug: `${slug}-${tenantId.slice(0, 6)}`,
+              plan_id: "free",
+            });
+          await db
+            .insert(users)
+            .values({
+              id: data.user.id,
+              tenant_id: tenantId,
+              email,
+              role: "owner",
+            });
+          dbUser = {
+            id: data.user.id,
+            tenant_id: tenantId,
+            email,
+            role: "owner",
+          } as any;
+        }
+        tenantId = dbUser.tenant_id ?? null;
       }
     } catch {
       // Invalid token — user remains null
