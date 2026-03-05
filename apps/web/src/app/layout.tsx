@@ -6,10 +6,14 @@ export const metadata: Metadata = {
   description: "Tạo thiệp cưới đẹp, chia sẻ dễ dàng",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="vi">
-      <body>{children}</body>
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }
