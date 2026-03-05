@@ -6,7 +6,7 @@ import { ThemeSupa } from "@supabase/auth-ui-shared";
 
 const Auth = dynamic(
   () => import("@supabase/auth-ui-react").then((m) => m.Auth),
-  { ssr: false }
+  { ssr: false },
 );
 
 export default function LoginPage() {
@@ -15,9 +15,9 @@ export default function LoginPage() {
       createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        { auth: { flowType: "implicit" } }
+        { auth: { flowType: "implicit" } },
       ),
-    []
+    [],
   );
 
   const appearance = useMemo(
@@ -40,7 +40,7 @@ export default function LoginPage() {
       },
       className: { container: "text-white" },
     }),
-    []
+    [],
   );
 
   return (
@@ -49,7 +49,6 @@ export default function LoginPage() {
         supabaseClient={supabase}
         appearance={appearance}
         providers={[]}
-        redirectTo="https://elove-xi.vercel.app/auth/callback"
         view="sign_in"
         localization={{
           variables: {
