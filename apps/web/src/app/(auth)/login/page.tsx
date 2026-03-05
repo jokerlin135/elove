@@ -1,6 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 
@@ -10,15 +11,27 @@ const Auth = dynamic(
 );
 
 export default function LoginPage() {
+  const router = useRouter();
+
   const supabase = useMemo(
     () =>
       createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        { auth: { flowType: "implicit" } },
       ),
     [],
   );
+
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session) {
+        router.push("/dashboard");
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [supabase, router]);
 
   const appearance = useMemo(
     () => ({
