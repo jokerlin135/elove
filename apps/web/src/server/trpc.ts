@@ -45,21 +45,17 @@ export async function createContext({ req }: FetchCreateContextFnOptions) {
             .replace(/[^a-z0-9]/gi, "")
             .toLowerCase();
           const tenantId = randomUUID();
-          await db
-            .insert(tenants)
-            .values({
-              id: tenantId,
-              slug: `${slug}-${tenantId.slice(0, 6)}`,
-              plan_id: "free",
-            });
-          await db
-            .insert(users)
-            .values({
-              id: data.user.id,
-              tenant_id: tenantId,
-              email,
-              role: "owner",
-            });
+          await db.insert(tenants).values({
+            id: tenantId,
+            slug: `${slug}-${tenantId.slice(0, 6)}`,
+            plan_id: "free",
+          });
+          await db.insert(users).values({
+            id: data.user.id,
+            tenant_id: tenantId,
+            email,
+            role: "owner",
+          });
           dbUser = {
             id: data.user.id,
             tenant_id: tenantId,
@@ -67,7 +63,7 @@ export async function createContext({ req }: FetchCreateContextFnOptions) {
             role: "owner",
           } as any;
         }
-        tenantId = dbUser.tenant_id ?? null;
+        tenantId = dbUser?.tenant_id ?? null;
       }
     } catch {
       // Invalid token — user remains null
