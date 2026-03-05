@@ -17,7 +17,9 @@ export async function GET(req: Request) {
     try {
       const supabase = createServerSupabase();
       const { data, error } = await supabase.auth.getUser(token);
-      result.authUser = data.user ? { id: data.user.id, email: data.user.email } : null;
+      result.authUser = data.user
+        ? { id: data.user.id, email: data.user.email }
+        : null;
       result.authError = error?.message ?? null;
 
       if (data.user) {
@@ -30,7 +32,15 @@ export async function GET(req: Request) {
           result.dbError = null;
         } catch (e: unknown) {
           result.dbUser = null;
-          result.dbError = String(e);
+          const err = e as Record<string, unknown>;
+          result.dbError = {
+            message: String(e),
+            cause: String(err?.cause ?? ""),
+            code: String(err?.code ?? ""),
+            detail: String(
+              (err?.cause as Record<string, unknown>)?.message ?? "",
+            ),
+          };
         }
       }
     } catch (e: unknown) {
