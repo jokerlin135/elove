@@ -13,21 +13,24 @@ export const mediaRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const service = new MediaService(ctx.db, ctx.r2);
+      const service = new MediaService(ctx.supa, ctx.r2);
       return service.getUploadUrl({ tenantId: ctx.tenantId, ...input });
     }),
 
   confirmUpload: protectedProcedure
     .input(z.object({ mediaId: z.string().uuid() }))
     .mutation(async ({ input, ctx }) => {
-      const service = new MediaService(ctx.db, ctx.r2);
-      return service.confirmUpload({ mediaId: input.mediaId, tenantId: ctx.tenantId });
+      const service = new MediaService(ctx.supa, ctx.r2);
+      return service.confirmUpload({
+        mediaId: input.mediaId,
+        tenantId: ctx.tenantId,
+      });
     }),
 
   list: protectedProcedure
     .input(z.object({ projectId: z.string().uuid().optional() }))
     .query(async ({ input, ctx }) => {
-      const service = new MediaService(ctx.db, ctx.r2);
+      const service = new MediaService(ctx.supa, ctx.r2);
       return service.list(ctx.tenantId, input.projectId);
     }),
 });

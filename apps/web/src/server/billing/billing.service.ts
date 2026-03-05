@@ -1,10 +1,4 @@
-import { eq } from "drizzle-orm";
-import {
-  plans,
-  subscriptions,
-  billing_events,
-  type Db,
-} from "@elove/shared";
+import type { SupabaseAdminDb } from "../supabase-admin-db";
 import type { PayOS } from "@payos/node";
 
 export type BillingCycle = "monthly" | "yearly" | "lifetime";
@@ -21,6 +15,22 @@ export interface CreateCheckoutLinkResult {
   orderCode: number;
 }
 
+type Plan = {
+  id: string;
+  payos_price_refs: Record<string, number> | null;
+};
+
+type Subscription = {
+  id: string;
+  tenant_id: string;
+  plan_id: string;
+  status: string;
+  billing_type: string;
+  payos_order_code: string | null;
+  current_period_start: string | null;
+  current_period_end: string | null;
+};
+
 // Price map in VND — fallback when plan has no payos_price_refs configured
 const PLAN_PRICE_VND: Record<string, Record<string, number>> = {
   pro: { monthly: 150_000, yearly: 1_500_000 },
@@ -30,7 +40,7 @@ const PLAN_PRICE_VND: Record<string, Record<string, number>> = {
 export class BillingService {
   constructor(
     private readonly payos: PayOS,
-    private readonly db: Db,
+    private readonly supa: SupabaseAdminDb,
   ) {}
 
   async createCheckoutLink({
@@ -38,19 +48,13 @@ export class BillingService {
     planId,
     billingCycle,
   }: CreateCheckoutLinkParams): Promise<CreateCheckoutLinkResult> {
-    const plan = await this.db.query.plans.findFirst({
-      where: (p, { eq: eqFn }) => eqFn(p.id, planId),
-    });
+    const plan = await this.supa.findFirst<Plan>("plans", { id: planId });
 
     if (!plan) {
       throw new Error(`Plan không tồn tại: ${planId}`);
     }
 
-    // Resolve amount from DB refs, then fallback to hardcoded map
-    const priceRefs =
-      (plan.payos_price_refs as Record<string, number> | null) ??
-      PLAN_PRICE_VND[planId] ??
-      {};
+    const priceRefs = plan.payos_price_refs ?? PLAN_PRICE_VND[planId] ?? {};
     const amount = priceRefs[billingCycle];
 
     if (amount === undefined || amount === null) {
@@ -71,12 +75,11 @@ export class BillingService {
     });
 
     // Log billing event (non-blocking — failures must not break checkout)
-    this.db
-      .insert(billing_events)
-      .values({
+    this.supa
+      .insert("billing_events", {
         tenant_id: tenantId,
         event_type: "payment_initiated",
-        metadata: { orderCode, planId, billingCycle } as Record<string, unknown>,
+        metadata: { orderCode, planId, billingCycle },
       })
       .catch(() => {});
 
@@ -84,15 +87,16 @@ export class BillingService {
   }
 
   async getSubscription(tenantId: string) {
-    return this.db.query.subscriptions.findFirst({
-      where: (s, { eq: eqFn }) => eqFn(s.tenant_id, tenantId),
+    return this.supa.findFirst<Subscription>("subscriptions", {
+      tenant_id: tenantId,
     });
   }
 
   async cancelSubscription(tenantId: string) {
-    await this.db
-      .update(subscriptions)
-      .set({ status: "canceled" })
-      .where(eq(subscriptions.tenant_id, tenantId));
+    await this.supa.update(
+      "subscriptions",
+      { tenant_id: tenantId },
+      { status: "canceled" },
+    );
   }
 }

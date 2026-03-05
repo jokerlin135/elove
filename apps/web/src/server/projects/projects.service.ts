@@ -1,11 +1,30 @@
 import { randomUUID } from "crypto";
-import { projects } from "@elove/shared";
-import type { Db } from "@elove/shared";
+import type { SupabaseAdminDb } from "../supabase-admin-db";
 import type { R2Client } from "../r2";
+
+type Project = {
+  id: string;
+  tenant_id: string;
+  slug: string;
+  title: string;
+  template_id: string;
+  template_version: number;
+  r2_document_key: string;
+  status: string;
+  edit_revision: number;
+  updated_at: string;
+};
+
+type Template = {
+  id: string;
+  status: string;
+  current_version: number;
+  r2_bundle_key: string;
+};
 
 export class ProjectsService {
   constructor(
-    private readonly db: Db,
+    private readonly supa: SupabaseAdminDb,
     private readonly r2: R2Client,
   ) {}
 
@@ -21,44 +40,43 @@ export class ProjectsService {
     slug: string;
   }) {
     // 1. Check slug uniqueness
-    const existing = await this.db.query.projects.findFirst({
-      where: (p, { eq }) => eq(p.slug, slug),
-    });
+    const existing = await this.supa.findFirst<Project>("projects", { slug });
     if (existing) throw new Error("Slug đã được sử dụng");
 
-    // 2. Fetch template metadata from DB
-    const template = await this.db.query.templates.findFirst({
-      where: (t, { eq, and }) =>
-        and(eq(t.id, templateId), eq(t.status, "published")),
+    // 2. Fetch template metadata
+    const template = await this.supa.findFirst<Template>("templates", {
+      id: templateId,
+      status: "published",
     });
     if (!template) throw new Error("Template không tồn tại");
 
     // 3. Fetch template bundle from R2
     const bundleRaw = await this.r2.get(template.r2_bundle_key);
-    let bundle;
+    let bundle: { document: Record<string, unknown>; theme: unknown };
     try {
       bundle = JSON.parse(bundleRaw);
-    } catch (e) {
+    } catch {
       throw new Error("Bundle template không hợp lệ");
     }
 
-    // 4. Deep-copy document + theme from bundle
+    // 4. Create project files in R2
     const projectId = randomUUID();
     const documentPath = `projects/${tenantId}/${projectId}/document.json`;
     const themePath = `projects/${tenantId}/${projectId}/theme.json`;
 
-    // 5. Write both files to R2
-    await this.r2.put(
-      documentPath,
-      JSON.stringify({ ...bundle.document, schema_version: 1 }),
-      { contentType: "application/json" },
-    );
-    await this.r2.put(themePath, JSON.stringify(bundle.theme), {
-      contentType: "application/json",
-    });
+    await Promise.all([
+      this.r2.put(
+        documentPath,
+        JSON.stringify({ ...bundle.document, schema_version: 1 }),
+        { contentType: "application/json" },
+      ),
+      this.r2.put(themePath, JSON.stringify(bundle.theme), {
+        contentType: "application/json",
+      }),
+    ]);
 
-    // 6. Insert project row to DB
-    await this.db.insert(projects).values({
+    // 5. Insert project row
+    await this.supa.insert("projects", {
       id: projectId,
       tenant_id: tenantId,
       slug,
@@ -72,20 +90,19 @@ export class ProjectsService {
   }
 
   async checkSlug(slug: string) {
-    const existing = await this.db.query.projects.findFirst({
-      where: (p, { eq }) => eq(p.slug, slug),
-    });
+    const existing = await this.supa.findFirst("projects", { slug });
     if (!existing) return { available: true, suggestions: [] as string[] };
-
     const rand = Math.random().toString(36).slice(2, 6);
-    const suggestions = [`${slug}-2026`, `${slug}-wedding`, `${slug}-${rand}`];
-    return { available: false, suggestions };
+    return {
+      available: false,
+      suggestions: [`${slug}-2026`, `${slug}-wedding`, `${slug}-${rand}`],
+    };
   }
 
   async get(projectId: string, tenantId: string) {
-    const project = await this.db.query.projects.findFirst({
-      where: (p, { eq, and }) =>
-        and(eq(p.id, projectId), eq(p.tenant_id, tenantId)),
+    const project = await this.supa.findFirst<Project>("projects", {
+      id: projectId,
+      tenant_id: tenantId,
     });
     if (!project) throw new Error("Project không tìm thấy");
 
@@ -94,39 +111,27 @@ export class ProjectsService {
       this.r2.get(`projects/${tenantId}/${projectId}/theme.json`),
     ]);
 
-    let document;
-    let theme;
-    try {
-      document = JSON.parse(docRaw);
-    } catch (e) {
-      throw new Error("Dữ liệu thiệp không hợp lệ");
-    }
-    try {
-      theme = JSON.parse(themeRaw);
-    } catch (e) {
-      throw new Error("Dữ liệu chủ đề không hợp lệ");
-    }
-
     return {
       project,
-      document,
-      theme,
+      document: JSON.parse(docRaw),
+      theme: JSON.parse(themeRaw),
     };
   }
 
   async list(tenantId: string) {
-    return this.db.query.projects.findMany({
-      where: (p, { eq }) => eq(p.tenant_id, tenantId),
-      orderBy: (p, { desc }) => [desc(p.updated_at)],
-    });
+    return this.supa.findMany<Project>(
+      "projects",
+      { tenant_id: tenantId },
+      "updated_at",
+    );
   }
 
   async archive(projectId: string, tenantId: string) {
-    const { eq, and } = await import("drizzle-orm");
-    await this.db
-      .update(projects)
-      .set({ status: "archived" })
-      .where(and(eq(projects.id, projectId), eq(projects.tenant_id, tenantId)));
+    await this.supa.update(
+      "projects",
+      { id: projectId, tenant_id: tenantId },
+      { status: "archived" },
+    );
   }
 
   async update(
@@ -138,19 +143,15 @@ export class ProjectsService {
       editRevision: number;
     },
   ) {
-    const { eq, and } = await import("drizzle-orm");
-
-    const project = await this.db.query.projects.findFirst({
-      where: (p, { eq: eqFn, and: andFn }) =>
-        andFn(eqFn(p.id, projectId), eqFn(p.tenant_id, tenantId)),
+    const project = await this.supa.findFirst<Project>("projects", {
+      id: projectId,
+      tenant_id: tenantId,
     });
     if (!project) throw new Error("Project không tìm thấy");
 
-    const docPath = project.r2_document_key;
     const themePath = `projects/${tenantId}/${projectId}/theme.json`;
-
     await Promise.all([
-      this.r2.put(docPath, payload.documentJson, {
+      this.r2.put(project.r2_document_key, payload.documentJson, {
         contentType: "application/json",
       }),
       this.r2.put(themePath, payload.themeJson, {
@@ -158,10 +159,14 @@ export class ProjectsService {
       }),
     ]);
 
-    await this.db
-      .update(projects)
-      .set({ edit_revision: payload.editRevision, updated_at: new Date() })
-      .where(and(eq(projects.id, projectId), eq(projects.tenant_id, tenantId)));
+    await this.supa.update(
+      "projects",
+      { id: projectId, tenant_id: tenantId },
+      {
+        edit_revision: payload.editRevision,
+        updated_at: new Date().toISOString(),
+      },
+    );
 
     return { ok: true };
   }

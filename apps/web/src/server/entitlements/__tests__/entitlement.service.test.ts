@@ -4,24 +4,15 @@ import {
   clearEntitlementCache,
 } from "../entitlement.service";
 
-function createTestDbWithPlan(
-  _planId: string,
-  _featureKey: string,
-  value: string,
-) {
+function createMockSupa() {
   return {
-    execute: vi.fn().mockResolvedValue([{ value, source: "plan" }]),
-  } as any;
-}
-
-function createTestDbWithOverride(
-  _tenantId: string,
-  _featureKey: string,
-  value: string,
-) {
-  return {
-    execute: vi.fn().mockResolvedValue([{ value, source: "override" }]),
-  } as any;
+    findFirst: vi.fn().mockResolvedValue(null as any),
+    findMany: vi.fn().mockResolvedValue([] as any),
+    insert: vi.fn().mockResolvedValue(undefined),
+    insertIgnore: vi.fn().mockResolvedValue(undefined),
+    upsert: vi.fn().mockResolvedValue(undefined),
+    update: vi.fn().mockResolvedValue(undefined),
+  };
 }
 
 describe("EntitlementService", () => {
@@ -30,31 +21,50 @@ describe("EntitlementService", () => {
   });
 
   it("returns plan entitlement from DB", async () => {
-    const db = createTestDbWithPlan("pro", "max_projects", "unlimited");
-    const service = new EntitlementService(db);
+    const supa = createMockSupa();
+    // No override
+    supa.findFirst
+      .mockResolvedValueOnce(null) // override → none
+      .mockResolvedValueOnce({ plan_id: "pro" }) // subscription
+      .mockResolvedValueOnce({ value: "unlimited" }); // plan_entitlement
+
+    const service = new EntitlementService(supa as any);
     const result = await service.get("tenant1", "max_projects");
     expect(result.value).toBe("unlimited");
-    expect(["plan", "override"]).toContain(result.source);
+    expect(result.source).toBe("plan");
   });
 
   it("override takes priority over plan", async () => {
-    const db = createTestDbWithOverride("tenant1", "max_projects", "999");
-    const service = new EntitlementService(db);
+    const supa = createMockSupa();
+    // Override exists
+    supa.findFirst.mockResolvedValueOnce({ value: "999", expires_at: null });
+
+    const service = new EntitlementService(supa as any);
     const result = await service.get("tenant1", "max_projects");
     expect(result.value).toBe("999");
     expect(result.source).toBe("override");
   });
 
   it("checkQuota returns allowed true for unlimited plan", async () => {
-    const db = createTestDbWithPlan("pro", "max_projects", "unlimited");
-    const service = new EntitlementService(db);
+    const supa = createMockSupa();
+    supa.findFirst
+      .mockResolvedValueOnce(null) // no override
+      .mockResolvedValueOnce({ plan_id: "pro" }) // subscription
+      .mockResolvedValueOnce({ value: "unlimited" }); // plan_entitlement
+
+    const service = new EntitlementService(supa as any);
     const result = await service.checkQuota("tenant1", "max_projects", 3);
     expect(result.allowed).toBe(true);
   });
 
   it("checkQuota returns allowed false when over limit", async () => {
-    const db = createTestDbWithPlan("free", "max_projects", "1");
-    const service = new EntitlementService(db);
+    const supa = createMockSupa();
+    supa.findFirst
+      .mockResolvedValueOnce(null) // no override
+      .mockResolvedValueOnce({ plan_id: "free" }) // subscription
+      .mockResolvedValueOnce({ value: "1" }); // plan_entitlement
+
+    const service = new EntitlementService(supa as any);
     const result = await service.checkQuota("tenant1", "max_projects", 2);
     expect(result.allowed).toBe(false);
   });

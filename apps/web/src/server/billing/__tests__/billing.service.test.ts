@@ -1,10 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BillingService } from "../billing.service";
-import type { Db } from "@elove/shared";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+function createMockSupa(overrides: Record<string, unknown> = {}) {
+  return {
+    findFirst: vi.fn().mockResolvedValue({
+      id: "pro",
+      name: "Pro",
+      billing_type: "recurring",
+      payos_price_refs: { monthly: 150_000, yearly: 1_500_000 },
+    }),
+    findMany: vi.fn().mockResolvedValue([]),
+    insert: vi.fn().mockResolvedValue(undefined),
+    insertIgnore: vi.fn().mockResolvedValue(undefined),
+    upsert: vi.fn().mockResolvedValue(undefined),
+    update: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
 
 function createMockPayos(checkoutUrl = "https://pay.payos.vn/web/test-link") {
   return {
@@ -27,62 +39,19 @@ function createMockPayos(checkoutUrl = "https://pay.payos.vn/web/test-link") {
   } as unknown as import("@payos/node").PayOS;
 }
 
-function createTestDb(
-  overrides: Partial<ReturnType<typeof buildDefaultDb>> = {},
-) {
-  return { ...buildDefaultDb(), ...overrides } as unknown as Db;
-}
-
-function buildDefaultDb() {
-  return {
-    query: {
-      plans: {
-        findFirst: vi.fn().mockResolvedValue({
-          id: "pro",
-          name: "Pro",
-          billing_type: "recurring",
-          payos_price_refs: { monthly: 150_000, yearly: 1_500_000 },
-        }),
-      },
-      subscriptions: {
-        findFirst: vi.fn().mockResolvedValue(null),
-      },
-      webhook_events: {
-        findFirst: vi.fn().mockResolvedValue(null),
-      },
-    },
-    insert: vi.fn().mockReturnValue({
-      values: vi.fn().mockReturnValue({
-        onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
-        onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
-        catch: vi.fn().mockResolvedValue(undefined),
-      }),
-    }),
-    update: vi.fn().mockReturnValue({
-      set: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue(undefined),
-      }),
-    }),
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 describe("BillingService", () => {
   let mockPayos: ReturnType<typeof createMockPayos>;
-  let db: Db;
+  let mockSupa: ReturnType<typeof createMockSupa>;
 
   beforeEach(() => {
     mockPayos = createMockPayos();
-    db = createTestDb();
+    mockSupa = createMockSupa();
     vi.clearAllMocks();
   });
 
   describe("createCheckoutLink", () => {
     it("returns a PayOS checkout URL for pro monthly plan", async () => {
-      const service = new BillingService(mockPayos, db);
+      const service = new BillingService(mockPayos, mockSupa as any);
 
       const result = await service.createCheckoutLink({
         tenantId: "tenant-1",
@@ -95,7 +64,7 @@ describe("BillingService", () => {
     });
 
     it("calls paymentRequests.create with correct amount for pro monthly", async () => {
-      const service = new BillingService(mockPayos, db);
+      const service = new BillingService(mockPayos, mockSupa as any);
 
       await service.createCheckoutLink({
         tenantId: "tenant-1",
@@ -112,22 +81,7 @@ describe("BillingService", () => {
     });
 
     it("calls paymentRequests.create with correct amount for pro yearly", async () => {
-      const yearlyDb = createTestDb({
-        query: {
-          plans: {
-            findFirst: vi.fn().mockResolvedValue({
-              id: "pro",
-              name: "Pro",
-              billing_type: "recurring",
-              payos_price_refs: { monthly: 150_000, yearly: 1_500_000 },
-            }),
-          },
-          subscriptions: { findFirst: vi.fn().mockResolvedValue(null) },
-          webhook_events: { findFirst: vi.fn().mockResolvedValue(null) },
-        } as unknown as ReturnType<typeof buildDefaultDb>["query"],
-      });
-
-      const service = new BillingService(mockPayos, yearlyDb);
+      const service = new BillingService(mockPayos, mockSupa as any);
 
       await service.createCheckoutLink({
         tenantId: "tenant-1",
@@ -141,22 +95,15 @@ describe("BillingService", () => {
     });
 
     it("uses one_time amount for lifetime plan", async () => {
-      const lifetimeDb = createTestDb({
-        query: {
-          plans: {
-            findFirst: vi.fn().mockResolvedValue({
-              id: "lifetime",
-              name: "Lifetime",
-              billing_type: "one_time",
-              payos_price_refs: { lifetime: 4_990_000 },
-            }),
-          },
-          subscriptions: { findFirst: vi.fn().mockResolvedValue(null) },
-          webhook_events: { findFirst: vi.fn().mockResolvedValue(null) },
-        } as unknown as ReturnType<typeof buildDefaultDb>["query"],
+      const lifetimeSupa = createMockSupa();
+      lifetimeSupa.findFirst.mockResolvedValue({
+        id: "lifetime",
+        name: "Lifetime",
+        billing_type: "one_time",
+        payos_price_refs: { lifetime: 4_990_000 },
       });
 
-      const service = new BillingService(mockPayos, lifetimeDb);
+      const service = new BillingService(mockPayos, lifetimeSupa as any);
 
       await service.createCheckoutLink({
         tenantId: "tenant-1",
@@ -164,9 +111,6 @@ describe("BillingService", () => {
         billingCycle: "lifetime",
       });
 
-      expect(mockPayos.paymentRequests.create).toHaveBeenCalledWith(
-        expect.objectContaining({ amount: expect.any(Number) }),
-      );
       const callArg = (
         mockPayos.paymentRequests.create as ReturnType<typeof vi.fn>
       ).mock.calls[0][0];
@@ -174,17 +118,9 @@ describe("BillingService", () => {
     });
 
     it("throws when plan does not exist", async () => {
-      const missingDb = createTestDb({
-        query: {
-          plans: {
-            findFirst: vi.fn().mockResolvedValue(null),
-          },
-          subscriptions: { findFirst: vi.fn().mockResolvedValue(null) },
-          webhook_events: { findFirst: vi.fn().mockResolvedValue(null) },
-        } as unknown as ReturnType<typeof buildDefaultDb>["query"],
-      });
-
-      const service = new BillingService(mockPayos, missingDb);
+      const missingPlanSupa = createMockSupa();
+      missingPlanSupa.findFirst.mockResolvedValue(null);
+      const service = new BillingService(mockPayos, missingPlanSupa as any);
 
       await expect(
         service.createCheckoutLink({
@@ -197,7 +133,7 @@ describe("BillingService", () => {
 
     it("throws when billing cycle is invalid for the plan", async () => {
       // pro plan has no 'lifetime' cycle
-      const service = new BillingService(mockPayos, db);
+      const service = new BillingService(mockPayos, mockSupa as any);
 
       await expect(
         service.createCheckoutLink({
@@ -210,7 +146,7 @@ describe("BillingService", () => {
 
     it("includes returnUrl and cancelUrl with correct domain", async () => {
       process.env.ELOVE_APP_URL = "https://test.elove.vn";
-      const service = new BillingService(mockPayos, db);
+      const service = new BillingService(mockPayos, mockSupa as any);
 
       await service.createCheckoutLink({
         tenantId: "t1",
@@ -230,7 +166,9 @@ describe("BillingService", () => {
 
   describe("getSubscription", () => {
     it("returns null when no subscription exists", async () => {
-      const service = new BillingService(mockPayos, db);
+      const noSubSupa = createMockSupa();
+      noSubSupa.findFirst.mockResolvedValue(null);
+      const service = new BillingService(mockPayos, noSubSupa as any);
       const result = await service.getSubscription("tenant-1");
       expect(result).toBeNull();
     });
@@ -238,12 +176,13 @@ describe("BillingService", () => {
 
   describe("cancelSubscription", () => {
     it("updates subscription status to canceled", async () => {
-      const service = new BillingService(mockPayos, db);
+      const service = new BillingService(mockPayos, mockSupa as any);
       await service.cancelSubscription("tenant-1");
-
-      expect(
-        (db as unknown as ReturnType<typeof buildDefaultDb>).update,
-      ).toHaveBeenCalled();
+      expect(mockSupa.update).toHaveBeenCalledWith(
+        "subscriptions",
+        { tenant_id: "tenant-1" },
+        { status: "canceled" },
+      );
     });
   });
 });

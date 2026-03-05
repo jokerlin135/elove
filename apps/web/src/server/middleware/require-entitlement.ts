@@ -7,7 +7,7 @@ export function requireEntitlement(featureKey: string) {
     if (!ctx.tenantId) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
     }
-    const service = new EntitlementService(ctx.db);
+    const service = new EntitlementService(ctx.supa);
     const result = await service.get(ctx.tenantId, featureKey);
     if (result.value === "0") {
       throw new TRPCError({

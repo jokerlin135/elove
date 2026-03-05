@@ -1,26 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ProjectsService } from "../projects.service";
 
-// Mock DB
-function createMockDb() {
+// Mock SupabaseAdminDb
+function createMockSupa() {
   return {
-    query: {
-      projects: {
-        findFirst: vi.fn(async () => null),
-        findMany: vi.fn(async () => []),
-      },
-      templates: {
-        findFirst: vi.fn(async () => ({
-          id: "tmpl-1",
-          status: "published",
-          current_version: 1,
-          r2_bundle_key: "templates/elegant/v1/bundle.json",
-        })),
-      },
-    },
-    insert: vi.fn(() => ({
-      values: vi.fn(() => Promise.resolve()),
-    })),
+    findFirst: vi.fn().mockResolvedValue(null as any),
+    findMany: vi.fn().mockResolvedValue([] as any),
+    insert: vi.fn().mockResolvedValue(undefined),
+    insertIgnore: vi.fn().mockResolvedValue(undefined),
+    upsert: vi.fn().mockResolvedValue(undefined),
+    update: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -81,14 +70,24 @@ function createMockR2() {
 }
 
 describe("ProjectsService", () => {
-  let mockDb: ReturnType<typeof createMockDb>;
+  let mockSupa: ReturnType<typeof createMockSupa>;
   let mockR2: ReturnType<typeof createMockR2>;
   let service: ProjectsService;
 
   beforeEach(() => {
-    mockDb = createMockDb();
+    mockSupa = createMockSupa();
     mockR2 = createMockR2();
-    service = new ProjectsService(mockDb as any, mockR2 as any);
+    // findFirst for templates returns a template on second call (first call is slug check)
+    mockSupa.findFirst
+      .mockResolvedValueOnce(null) // slug check → not taken
+      .mockResolvedValueOnce({
+        // template lookup → found
+        id: "tmpl-1",
+        status: "published",
+        current_version: 1,
+        r2_bundle_key: "templates/elegant/v1/bundle.json",
+      });
+    service = new ProjectsService(mockSupa as any, mockR2 as any);
   });
 
   it("creates project — writes 2 files to R2 and inserts to DB", async () => {
@@ -102,12 +101,14 @@ describe("ProjectsService", () => {
     expect(result.projectId).toBeDefined();
     expect(result.slug).toBe("minh-va-lan");
     expect(mockR2.put).toHaveBeenCalledTimes(2); // document.json + theme.json
+    expect(mockSupa.insert).toHaveBeenCalledTimes(1);
   });
 
   it("rejects duplicate slug", async () => {
-    mockDb.query.projects.findFirst.mockResolvedValueOnce({
-      id: "existing",
-    } as any);
+    // Reset and make findFirst return existing project for slug check
+    mockSupa.findFirst.mockReset();
+    mockSupa.findFirst.mockResolvedValueOnce({ id: "existing" } as any);
+
     await expect(
       service.create({
         tenantId: "t1",
@@ -119,15 +120,18 @@ describe("ProjectsService", () => {
   });
 
   it("checkSlug returns available=true for unused slug", async () => {
+    mockSupa.findFirst.mockReset();
+    mockSupa.findFirst.mockResolvedValueOnce(null);
+
     const result = await service.checkSlug("fresh-slug");
     expect(result.available).toBe(true);
     expect(result.suggestions).toHaveLength(0);
   });
 
   it("checkSlug returns suggestions for taken slug", async () => {
-    mockDb.query.projects.findFirst.mockResolvedValueOnce({
-      id: "existing",
-    } as any);
+    mockSupa.findFirst.mockReset();
+    mockSupa.findFirst.mockResolvedValueOnce({ id: "existing" } as any);
+
     const result = await service.checkSlug("taken");
     expect(result.available).toBe(false);
     expect(result.suggestions.length).toBeGreaterThan(0);

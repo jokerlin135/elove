@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase/server";
-import { createDb, tenants, users } from "@elove/shared";
+import { SupabaseAdminDb } from "../../../server/supabase-admin-db";
 import { randomUUID } from "crypto";
 
 export async function GET(request: Request) {
@@ -19,10 +19,12 @@ export async function GET(request: Request) {
 
       if (user) {
         try {
-          const db = createDb(process.env.DATABASE_URL!);
-          const existing = await db.query.users.findFirst({
-            where: (u, { eq }) => eq(u.id, user.id),
-          });
+          const supa = new SupabaseAdminDb(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          );
+
+          const existing = await supa.findFirst("users", { id: user.id });
 
           if (!existing) {
             const email = user.email ?? "";
@@ -32,13 +34,13 @@ export async function GET(request: Request) {
               .toLowerCase();
             const tenantId = randomUUID();
 
-            await db.insert(tenants).values({
+            await supa.insert("tenants", {
               id: tenantId,
               slug: `${slug}-${tenantId.slice(0, 6)}`,
               plan_id: "free",
             });
 
-            await db.insert(users).values({
+            await supa.insert("users", {
               id: user.id,
               tenant_id: tenantId,
               email,

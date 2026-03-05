@@ -61,7 +61,7 @@ export const billingRouter = router({
     .input(createCheckoutSchema)
     .mutation(async ({ input, ctx }) => {
       const payos = getPayOS();
-      const service = new BillingService(payos, ctx.db);
+      const service = new BillingService(payos, ctx.supa);
 
       const result = await service.createCheckoutLink({
         tenantId: ctx.tenantId,
@@ -74,13 +74,13 @@ export const billingRouter = router({
 
   getSubscription: protectedProcedure.query(async ({ ctx }) => {
     const payos = getPayOS();
-    const service = new BillingService(payos, ctx.db);
+    const service = new BillingService(payos, ctx.supa);
     return service.getSubscription(ctx.tenantId);
   }),
 
   cancelSubscription: protectedProcedure.mutation(async ({ ctx }) => {
     const payos = getPayOS();
-    const service = new BillingService(payos, ctx.db);
+    const service = new BillingService(payos, ctx.supa);
     await service.cancelSubscription(ctx.tenantId);
     return { success: true };
   }),
@@ -118,7 +118,7 @@ export const billingRouter = router({
         });
       }
 
-      const handler = new WebhookHandler(ctx.db);
+      const handler = new WebhookHandler(ctx.supa);
       await handler.process(input.eventId, webhookPayload, input.metadata);
 
       return { received: true };

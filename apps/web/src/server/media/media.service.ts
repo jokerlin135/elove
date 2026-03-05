@@ -1,6 +1,5 @@
 import { randomUUID } from "crypto";
-import { media } from "@elove/shared";
-import type { Db } from "@elove/shared";
+import type { SupabaseAdminDb } from "../supabase-admin-db";
 import type { R2Client } from "../r2";
 
 const ALLOWED_MIMES = new Set([
@@ -13,11 +12,22 @@ const ALLOWED_MIMES = new Set([
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB hard limit
 
+type MediaRow = {
+  id: string;
+  tenant_id: string;
+  project_id: string;
+  r2_key: string;
+  mime_type: string;
+  size_bytes: number;
+  variants_ready: boolean;
+  created_at: string;
+};
+
 export class MediaService {
   private variantQueue?: (mediaId: string) => void;
 
   constructor(
-    private readonly db: Db,
+    private readonly supa: SupabaseAdminDb,
     private readonly r2: R2Client,
   ) {}
 
@@ -54,7 +64,7 @@ export class MediaService {
     const uploadUrl = await this.r2.presignUpload(r2Path, mimeType, 3600);
 
     // Pre-insert stub record
-    await this.db.insert(media).values({
+    await this.supa.insert("media", {
       id: mediaId,
       tenant_id: tenantId,
       project_id: projectId,
@@ -80,15 +90,18 @@ export class MediaService {
   }
 
   async list(tenantId: string, projectId?: string) {
-    if (typeof (this.db.query.media as any)?.findMany === "function") {
-      return (this.db.query.media as any).findMany({
-        where: (m: typeof media, { eq, and }: any) =>
-          projectId
-            ? and(eq(m.tenant_id, tenantId), eq(m.project_id, projectId))
-            : eq(m.tenant_id, tenantId),
-        orderBy: (m: typeof media, { desc }: any) => [desc(m.created_at)],
-      });
+    if (projectId) {
+      // Supabase REST doesn't support OR easily — use AND with both conditions
+      return this.supa.findMany<MediaRow>(
+        "media",
+        { tenant_id: tenantId, project_id: projectId },
+        "created_at",
+      );
     }
-    return [];
+    return this.supa.findMany<MediaRow>(
+      "media",
+      { tenant_id: tenantId },
+      "created_at",
+    );
   }
 }

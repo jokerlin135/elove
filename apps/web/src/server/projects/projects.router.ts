@@ -16,33 +16,33 @@ export const projectsRouter = router({
   create: protectedProcedure
     .input(createInput)
     .mutation(async ({ input, ctx }) => {
-      const service = new ProjectsService(ctx.db, ctx.r2);
+      const service = new ProjectsService(ctx.supa, ctx.r2);
       return service.create({ tenantId: ctx.tenantId, ...input });
     }),
 
   checkSlug: protectedProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ input, ctx }) => {
-      const service = new ProjectsService(ctx.db, ctx.r2);
+      const service = new ProjectsService(ctx.supa, ctx.r2);
       return service.checkSlug(input.slug);
     }),
 
   get: protectedProcedure
     .input(z.object({ projectId: z.string().uuid() }))
     .query(async ({ input, ctx }) => {
-      const service = new ProjectsService(ctx.db, ctx.r2);
+      const service = new ProjectsService(ctx.supa, ctx.r2);
       return service.get(input.projectId, ctx.tenantId);
     }),
 
   list: protectedProcedure.query(async ({ ctx }) => {
-    const service = new ProjectsService(ctx.db, ctx.r2);
+    const service = new ProjectsService(ctx.supa, ctx.r2);
     return service.list(ctx.tenantId);
   }),
 
   archive: protectedProcedure
     .input(z.object({ projectId: z.string().uuid() }))
     .mutation(async ({ input, ctx }) => {
-      const service = new ProjectsService(ctx.db, ctx.r2);
+      const service = new ProjectsService(ctx.supa, ctx.r2);
       return service.archive(input.projectId, ctx.tenantId);
     }),
 
@@ -56,7 +56,7 @@ export const projectsRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const service = new ProjectsService(ctx.db, ctx.r2);
+      const service = new ProjectsService(ctx.supa, ctx.r2);
       return service.update(input.projectId, ctx.tenantId, {
         documentJson: input.documentJson,
         themeJson: input.themeJson,

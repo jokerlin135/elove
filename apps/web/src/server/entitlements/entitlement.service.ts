@@ -1,5 +1,4 @@
-import { sql } from "drizzle-orm";
-import type { Db } from "@elove/shared";
+import type { SupabaseAdminDb } from "../supabase-admin-db";
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -14,8 +13,12 @@ export function clearEntitlementCache(): void {
   entitlementCache.clear();
 }
 
+type Subscription = { plan_id: string };
+type PlanEntitlement = { value: string };
+type EntitlementOverride = { value: string; expires_at: string | null };
+
 export class EntitlementService {
-  constructor(private db: Db) {}
+  constructor(private supa: SupabaseAdminDb) {}
 
   async get(
     tenantId: string,
@@ -31,36 +34,43 @@ export class EntitlementService {
       };
     }
 
-    // 2. DB query with override priority
-    const rows = await this.db.execute(sql`
-      SELECT
-        COALESCE(eo.value, pe.value) AS value,
-        CASE WHEN eo.value IS NOT NULL THEN 'override' ELSE 'plan' END AS source
-      FROM plan_entitlements pe
-      JOIN subscriptions s ON s.plan_id = pe.plan_id AND s.tenant_id = ${tenantId}
-      LEFT JOIN entitlement_overrides eo ON eo.tenant_id = ${tenantId}
-        AND eo.feature_key = ${featureKey}
-        AND (eo.expires_at IS NULL OR eo.expires_at > NOW())
-      WHERE pe.feature_key = ${featureKey}
-      LIMIT 1
-    `);
+    // 2. Check override first (higher priority)
+    const override = await this.supa.findFirst<EntitlementOverride>(
+      "entitlement_overrides",
+      { tenant_id: tenantId, feature_key: featureKey },
+    );
 
-    const row = rows[0] as { value: string; source: string } | undefined;
+    if (override && (override.expires_at === null || new Date(override.expires_at) > new Date())) {
+      const result = { value: override.value, source: "override" as const };
+      entitlementCache.set(cacheKey, {
+        ...result,
+        expiresAt: Date.now() + CACHE_TTL_MS,
+      });
+      return result;
+    }
 
-    if (!row) return { value: "0", source: "plan" };
+    // 3. Get plan entitlement via subscription
+    const subscription = await this.supa.findFirst<Subscription>(
+      "subscriptions",
+      { tenant_id: tenantId },
+    );
 
-    const result = {
-      value: String(row.value),
-      source: String(row.source) as "plan" | "override",
-    };
+    if (subscription) {
+      const planEntitlement = await this.supa.findFirst<PlanEntitlement>(
+        "plan_entitlements",
+        { plan_id: subscription.plan_id, feature_key: featureKey },
+      );
+      if (planEntitlement) {
+        const result = { value: planEntitlement.value, source: "plan" as const };
+        entitlementCache.set(cacheKey, {
+          ...result,
+          expiresAt: Date.now() + CACHE_TTL_MS,
+        });
+        return result;
+      }
+    }
 
-    // 3. Cache result
-    entitlementCache.set(cacheKey, {
-      ...result,
-      expiresAt: Date.now() + CACHE_TTL_MS,
-    });
-
-    return result;
+    return { value: "0", source: "plan" };
   }
 
   async checkQuota(

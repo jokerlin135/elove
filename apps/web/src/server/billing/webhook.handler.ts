@@ -1,5 +1,4 @@
-import { eq } from "drizzle-orm";
-import { webhook_events, subscriptions, billing_events, type Db } from "@elove/shared";
+import type { SupabaseAdminDb } from "../supabase-admin-db";
 import type { Webhook } from "@payos/node";
 
 export interface PaymentMetadata {
@@ -11,7 +10,7 @@ export interface PaymentMetadata {
 export type PayOSWebhookEvent = Webhook;
 
 export class WebhookHandler {
-  constructor(private readonly db: Db) {}
+  constructor(private readonly supa: SupabaseAdminDb) {}
 
   async process(
     eventId: string,
@@ -19,24 +18,22 @@ export class WebhookHandler {
     metadata: PaymentMetadata,
   ): Promise<void> {
     // Idempotency check — skip already-processed events
-    const existing = await this.db.query.webhook_events.findFirst({
-      where: (w, { eq: eqFn }) => eqFn(w.event_id, eventId),
-    });
+    const existing = await this.supa.findFirst<{ status: string }>(
+      "webhook_events",
+      { event_id: eventId },
+    );
 
     if (existing?.status === "processed") {
       return;
     }
 
     // Insert a "processing" record; ignore conflict if the row already exists
-    await this.db
-      .insert(webhook_events)
-      .values({
-        event_id: eventId,
-        event_type: "payos_payment",
-        status: "processing",
-        payload: event as unknown as Record<string, unknown>,
-      })
-      .onConflictDoNothing();
+    await this.supa.insertIgnore("webhook_events", {
+      event_id: eventId,
+      event_type: "payos_payment",
+      status: "processing",
+      payload: event as unknown as Record<string, unknown>,
+    });
 
     try {
       const isPaid =
@@ -49,15 +46,17 @@ export class WebhookHandler {
       }
 
       // Mark event as processed
-      await this.db
-        .update(webhook_events)
-        .set({ status: "processed" })
-        .where(eq(webhook_events.event_id, eventId));
+      await this.supa.update(
+        "webhook_events",
+        { event_id: eventId },
+        { status: "processed" },
+      );
     } catch (err) {
-      await this.db
-        .update(webhook_events)
-        .set({ status: "failed" })
-        .where(eq(webhook_events.event_id, eventId));
+      await this.supa.update(
+        "webhook_events",
+        { event_id: eventId },
+        { status: "failed" },
+      );
       throw err;
     }
   }
@@ -72,37 +71,25 @@ export class WebhookHandler {
     const status = isLifetime ? "lifetime" : "active";
     const billingType = isLifetime ? "one_time" : "recurring";
 
-    // Upsert subscription for the tenant
-    await this.db
-      .insert(subscriptions)
-      .values({
-        tenant_id,
-        plan_id,
-        status,
-        billing_type: billingType,
-        payos_order_code: String(orderCode),
-        current_period_start: new Date(),
-        current_period_end: isLifetime ? null : this._nextPeriodEnd(billing_cycle),
-      })
-      .onConflictDoUpdate({
-        target: subscriptions.tenant_id,
-        set: {
-          plan_id,
-          status,
-          billing_type: billingType,
-          payos_order_code: String(orderCode),
-          current_period_start: new Date(),
-          current_period_end: isLifetime ? null : this._nextPeriodEnd(billing_cycle),
-        },
-      });
+    // Upsert subscription for the tenant (merge-duplicates handles ON CONFLICT DO UPDATE)
+    await this.supa.upsert("subscriptions", {
+      tenant_id,
+      plan_id,
+      status,
+      billing_type: billingType,
+      payos_order_code: String(orderCode),
+      current_period_start: new Date().toISOString(),
+      current_period_end: isLifetime
+        ? null
+        : this._nextPeriodEnd(billing_cycle).toISOString(),
+    });
 
     // Log billing event (non-blocking)
-    this.db
-      .insert(billing_events)
-      .values({
+    this.supa
+      .insert("billing_events", {
         tenant_id,
         event_type: "subscription_activated",
-        metadata: { plan_id, billing_cycle, orderCode } as Record<string, unknown>,
+        metadata: { plan_id, billing_cycle, orderCode },
       })
       .catch(() => {});
   }
@@ -112,7 +99,6 @@ export class WebhookHandler {
     if (billingCycle === "yearly") {
       now.setFullYear(now.getFullYear() + 1);
     } else {
-      // monthly default
       now.setMonth(now.getMonth() + 1);
     }
     return now;

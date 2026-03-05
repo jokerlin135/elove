@@ -1,44 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { WebhookHandler } from "../webhook.handler";
-import type { Db } from "@elove/shared";
 import type { PayOSWebhookEvent, PaymentMetadata } from "../webhook.handler";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function buildDefaultDb() {
+function createMockSupa() {
   return {
-    query: {
-      plans: {
-        findFirst: vi.fn().mockResolvedValue(null),
-      },
-      subscriptions: {
-        findFirst: vi.fn().mockResolvedValue(null),
-      },
-      webhook_events: {
-        findFirst: vi.fn().mockResolvedValue(null),
-      },
-    },
-    insert: vi.fn().mockReturnValue({
-      values: vi.fn().mockReturnValue({
-        onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
-        onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
-        catch: vi.fn().mockResolvedValue(undefined),
-      }),
-    }),
-    update: vi.fn().mockReturnValue({
-      set: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue(undefined),
-      }),
-    }),
+    findFirst: vi.fn().mockResolvedValue(null),
+    findMany: vi.fn().mockResolvedValue([]),
+    insert: vi.fn().mockResolvedValue(undefined),
+    insertIgnore: vi.fn().mockResolvedValue(undefined),
+    upsert: vi.fn().mockResolvedValue(undefined),
+    update: vi.fn().mockResolvedValue(undefined),
   };
-}
-
-function createTestDb(
-  overrides: Partial<ReturnType<typeof buildDefaultDb>> = {},
-) {
-  return { ...buildDefaultDb(), ...overrides } as unknown as Db;
 }
 
 function makePaidEvent(orderCode = 1_234_567_890): PayOSWebhookEvent {
@@ -68,17 +40,13 @@ const defaultMetadata: PaymentMetadata = {
   billing_cycle: "monthly",
 };
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 describe("WebhookHandler", () => {
-  let db: ReturnType<typeof buildDefaultDb>;
+  let mockSupa: ReturnType<typeof createMockSupa>;
   let handler: WebhookHandler;
 
   beforeEach(() => {
-    db = buildDefaultDb();
-    handler = new WebhookHandler(db as unknown as Db);
+    mockSupa = createMockSupa();
+    handler = new WebhookHandler(mockSupa as any);
     vi.clearAllMocks();
   });
 
@@ -93,31 +61,29 @@ describe("WebhookHandler", () => {
     it("inserts webhook_event with processing status first", async () => {
       const event = makePaidEvent();
       await handler.process("evt-001", event, defaultMetadata);
-
-      const insertValues = (db.insert as ReturnType<typeof vi.fn>).mock.calls;
-      const firstInsert = insertValues[0];
-      // First insert argument should be webhook_events table
-      expect(firstInsert).toBeDefined();
+      expect(mockSupa.insertIgnore).toHaveBeenCalledWith(
+        "webhook_events",
+        expect.objectContaining({ event_id: "evt-001", status: "processing" }),
+      );
     });
 
     it("marks webhook_event as processed after success", async () => {
       const event = makePaidEvent();
       await handler.process("evt-001", event, defaultMetadata);
-
-      const updateCalls = (db.update as ReturnType<typeof vi.fn>).mock.calls;
-      expect(updateCalls.length).toBeGreaterThan(0);
-      const setCall = db.update({} as never).set;
-      // Verify update was called
-      expect(db.update).toHaveBeenCalled();
+      expect(mockSupa.update).toHaveBeenCalledWith(
+        "webhook_events",
+        { event_id: "evt-001" },
+        { status: "processed" },
+      );
     });
 
     it("upserts subscription for the tenant on PAID", async () => {
       const event = makePaidEvent();
       await handler.process("evt-001", event, defaultMetadata);
-
-      // insert called at least twice: webhook_events + subscriptions (+optionally billing_events)
-      const allInsertCalls = (db.insert as ReturnType<typeof vi.fn>).mock.calls;
-      expect(allInsertCalls.length).toBeGreaterThanOrEqual(2);
+      expect(mockSupa.upsert).toHaveBeenCalledWith(
+        "subscriptions",
+        expect.objectContaining({ tenant_id: "tenant-1", status: "active" }),
+      );
     });
 
     it("sets status=lifetime for lifetime billing cycle", async () => {
@@ -131,6 +97,11 @@ describe("WebhookHandler", () => {
       await expect(
         handler.process("evt-002", event, lifetimeMetadata),
       ).resolves.not.toThrow();
+
+      expect(mockSupa.upsert).toHaveBeenCalledWith(
+        "subscriptions",
+        expect.objectContaining({ status: "lifetime" }),
+      );
     });
   });
 
@@ -159,103 +130,81 @@ describe("WebhookHandler", () => {
         handler.process("evt-003", cancelledEvent, defaultMetadata),
       ).resolves.not.toThrow();
 
-      // Should still mark event as processed (update called), but no subscription insert
-      // via onConflictDoUpdate (only webhook_events insert + possibly billing_events)
-      expect(db.update).toHaveBeenCalled();
+      expect(mockSupa.upsert).not.toHaveBeenCalled();
+      expect(mockSupa.update).toHaveBeenCalledWith(
+        "webhook_events",
+        { event_id: "evt-003" },
+        { status: "processed" },
+      );
     });
   });
 
   describe("idempotency", () => {
     it("skips processing duplicate event_id that is already processed", async () => {
-      // Simulate existing processed event
-      const dbWithExisting = buildDefaultDb();
-      dbWithExisting.query.webhook_events.findFirst = vi
-        .fn()
-        .mockResolvedValue({ event_id: "evt-dupe", status: "processed" });
+      const supaWithExisting = createMockSupa();
+      supaWithExisting.findFirst.mockResolvedValue({
+        event_id: "evt-dupe",
+        status: "processed",
+      });
 
-      const dedupHandler = new WebhookHandler(dbWithExisting as unknown as Db);
-      const event = makePaidEvent();
-
+      const dedupHandler = new WebhookHandler(supaWithExisting as any);
       await expect(
-        dedupHandler.process("evt-dupe", event, defaultMetadata),
+        dedupHandler.process("evt-dupe", makePaidEvent(), defaultMetadata),
       ).resolves.not.toThrow();
 
       // insert should NOT be called since we return early
-      expect(dbWithExisting.insert).not.toHaveBeenCalled();
+      expect(supaWithExisting.insertIgnore).not.toHaveBeenCalled();
     });
 
     it("does not throw when the same event is processed twice", async () => {
-      // First call: no existing event
       await handler.process("evt-same", makePaidEvent(), defaultMetadata);
 
       // Second call: simulate event now exists as "processed"
-      const processedDb = buildDefaultDb();
-      processedDb.query.webhook_events.findFirst = vi
-        .fn()
-        .mockResolvedValue({ event_id: "evt-same", status: "processed" });
+      const processedSupa = createMockSupa();
+      processedSupa.findFirst.mockResolvedValue({
+        event_id: "evt-same",
+        status: "processed",
+      });
 
-      const secondHandler = new WebhookHandler(processedDb as unknown as Db);
+      const secondHandler = new WebhookHandler(processedSupa as any);
       await expect(
         secondHandler.process("evt-same", makePaidEvent(), defaultMetadata),
       ).resolves.not.toThrow();
     });
 
     it("does not skip event that is in processing state (allows retry)", async () => {
-      const dbProcessing = buildDefaultDb();
-      dbProcessing.query.webhook_events.findFirst = vi
-        .fn()
-        .mockResolvedValue({ event_id: "evt-retry", status: "processing" });
+      const supaProcessing = createMockSupa();
+      supaProcessing.findFirst.mockResolvedValue({
+        event_id: "evt-retry",
+        status: "processing",
+      });
 
-      const retryHandler = new WebhookHandler(dbProcessing as unknown as Db);
-      const event = makePaidEvent();
-
-      // Should proceed (not skip) for in-progress events
+      const retryHandler = new WebhookHandler(supaProcessing as any);
       await expect(
-        retryHandler.process("evt-retry", event, defaultMetadata),
+        retryHandler.process("evt-retry", makePaidEvent(), defaultMetadata),
       ).resolves.not.toThrow();
 
-      // insert should be called (onConflictDoNothing protects against race)
-      expect(dbProcessing.insert).toHaveBeenCalled();
+      expect(supaProcessing.insertIgnore).toHaveBeenCalled();
     });
   });
 
   describe("error handling", () => {
     it("marks event as failed and rethrows when subscription upsert fails", async () => {
-      const errorDb = buildDefaultDb();
-      let callCount = 0;
+      const errorSupa = createMockSupa();
+      errorSupa.upsert.mockRejectedValue(new Error("DB error"));
 
-      errorDb.insert = vi.fn().mockImplementation(() => ({
-        values: vi.fn().mockImplementation(() => {
-          callCount++;
-          if (callCount === 1) {
-            // First insert (webhook_events) succeeds
-            return {
-              onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
-              onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
-              catch: vi.fn().mockResolvedValue(undefined),
-            };
-          }
-          // Second insert (subscriptions) fails
-          return {
-            onConflictDoNothing: vi
-              .fn()
-              .mockRejectedValue(new Error("DB error")),
-            onConflictDoUpdate: vi
-              .fn()
-              .mockRejectedValue(new Error("DB error")),
-            catch: vi.fn().mockRejectedValue(new Error("DB error")),
-          };
-        }),
-      }));
-
-      const errorHandler = new WebhookHandler(errorDb as unknown as Db);
+      const errorHandler = new WebhookHandler(errorSupa as any);
 
       await expect(
         errorHandler.process("evt-fail", makePaidEvent(), defaultMetadata),
       ).rejects.toThrow("DB error");
 
       // Status should have been set to "failed"
-      expect(errorDb.update).toHaveBeenCalled();
+      expect(errorSupa.update).toHaveBeenCalledWith(
+        "webhook_events",
+        { event_id: "evt-fail" },
+        { status: "failed" },
+      );
     });
   });
 });
