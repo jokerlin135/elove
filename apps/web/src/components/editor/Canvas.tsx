@@ -19,6 +19,21 @@ import { useStore } from "zustand";
 import { useEditorStore } from "./EditorProvider";
 import type { Section } from "@elove/shared";
 
+const SECTION_META: Record<string, { icon: string; label: string }> = {
+  hero: { icon: "🌅", label: "Hero Banner" },
+  text: { icon: "📝", label: "Văn bản" },
+  image_gallery: { icon: "🖼️", label: "Album ảnh" },
+  spacer: { icon: "↕️", label: "Khoảng trống" },
+  event_info: { icon: "📅", label: "Thông tin sự kiện" },
+  countdown: { icon: "⏳", label: "Đếm ngược" },
+  map: { icon: "📍", label: "Bản đồ" },
+  timeline: { icon: "📋", label: "Timeline" },
+  rsvp: { icon: "✉️", label: "RSVP" },
+  guestbook: { icon: "💌", label: "Lời chúc" },
+  gift: { icon: "🎁", label: "Quà tặng" },
+  music: { icon: "🎵", label: "Nhạc nền" },
+};
+
 function SectionBlock({
   section,
   isSelected,
@@ -35,29 +50,35 @@ function SectionBlock({
     transition,
   };
 
+  const compType = (section as unknown as { config?: { componentType?: string } }).config?.componentType ?? "unknown";
+  const sectionMeta = SECTION_META[compType] ?? { icon: "📦", label: compType };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       onClick={onClick}
-      className={`relative mb-2 rounded-lg border-2 transition-all cursor-pointer ${
-        isSelected
-          ? "border-rose-500"
-          : "border-transparent hover:border-white/20"
-      }`}
+      className={`relative mb-2 rounded-lg border-2 transition-all cursor-pointer ${isSelected
+        ? "border-rose-500 shadow-lg shadow-rose-500/10"
+        : "border-transparent hover:border-white/20"
+        }`}
     >
       {/* Drag handle */}
       <div
         {...attributes}
         {...listeners}
-        className="absolute left-0 top-0 bottom-0 w-6 flex items-center justify-center opacity-0 hover:opacity-100 cursor-grab text-white/30 text-xs"
+        className="absolute left-0 top-0 bottom-0 w-6 flex items-center justify-center opacity-0 hover:opacity-100 cursor-grab text-white/30 text-xs z-10"
         onClick={(e) => e.stopPropagation()}
       >
         ⋮⋮
       </div>
-      {/* Section content placeholder */}
-      <div className="bg-white/5 border border-white/8 rounded-lg p-8 text-center text-white/20 text-sm ml-6">
-        Section: {section.id.slice(0, 8)}
+      {/* Section content */}
+      <div className="bg-white/5 border border-white/8 rounded-lg p-6 ml-6 flex items-center gap-4">
+        <span className="text-2xl">{sectionMeta.icon}</span>
+        <div>
+          <div className="text-sm font-medium text-white/70">{sectionMeta.label}</div>
+          <div className="text-xs text-white/30">{section.id.slice(0, 8)}</div>
+        </div>
       </div>
     </div>
   );

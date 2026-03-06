@@ -1,0 +1,22 @@
+{
+    "name": "ELove — Thiệp Cưới Online",
+    "short_name": "ELove",
+    "description": "Tạo thiệp cưới online đẹp, cá nhân hoá và chia sẻ dễ dàng",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#080810",
+    "theme_color": "#f43f5e",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

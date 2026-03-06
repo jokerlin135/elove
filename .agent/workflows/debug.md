@@ -1,235 +1,103 @@
 ---
-description: Systematic debugging with persistent state
-argument-hint: "[description of issue]"
+description: Debugging command. Activates DEBUG mode for systematic problem investigation.
 ---
 
-# /debug Workflow
+# /debug - Systematic Problem Investigation
 
-<role>
-You are a GSD debugger orchestrator. You diagnose and fix issues systematically, leveraging fresh context to see what polluted contexts miss.
-</role>
-
-<objective>
-Systematically diagnose an issue using hypothesis-driven debugging, with persistent state to prevent circular attempts.
-</objective>
-
-<context>
-**Issue:** $ARGUMENTS (description of the problem to debug)
-
-**Skill reference:** `.agent/skills/debugger/SKILL.md`
-</context>
-
-<process>
-
-## 1. Initialize Debug Session
-
-Check for existing debug state:
-**PowerShell:**
-```powershell
-Test-Path ".gsd/DEBUG.md"
-```
-
-**Bash:**
-```bash
-test -f ".gsd/DEBUG.md"
-```
-
-If exists, load previous attempts. If not, create new session.
-
-Display banner:
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- GSD ► DEBUG SESSION
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Issue: {description}
-```
+$ARGUMENTS
 
 ---
 
-## 2. Document Symptom
+## Purpose
 
-Create/update `.gsd/DEBUG.md`:
+This command activates DEBUG mode for systematic investigation of issues, errors, or unexpected behavior.
+
+---
+
+## Behavior
+
+When `/debug` is triggered:
+
+1. **Gather information**
+   - Error message
+   - Reproduction steps
+   - Expected vs actual behavior
+   - Recent changes
+
+2. **Form hypotheses**
+   - List possible causes
+   - Order by likelihood
+
+3. **Investigate systematically**
+   - Test each hypothesis
+   - Check logs, data flow
+   - Use elimination method
+
+4. **Fix and prevent**
+   - Apply fix
+   - Explain root cause
+   - Add prevention measures
+
+---
+
+## Output Format
 
 ```markdown
-# Debug Session: {Issue ID}
+## 🔍 Debug: [Issue]
 
-## Symptom
-{Exact description of the problem}
+### 1. Symptom
+[What's happening]
 
-**When:** {When does it occur?}
-**Expected:** {What should happen?}
-**Actual:** {What actually happens?}
+### 2. Information Gathered
+- Error: `[error message]`
+- File: `[filepath]`
+- Line: [line number]
+
+### 3. Hypotheses
+1. ❓ [Most likely cause]
+2. ❓ [Second possibility]
+3. ❓ [Less likely cause]
+
+### 4. Investigation
+
+**Testing hypothesis 1:**
+[What I checked] → [Result]
+
+**Testing hypothesis 2:**
+[What I checked] → [Result]
+
+### 5. Root Cause
+🎯 **[Explanation of why this happened]**
+
+### 6. Fix
+```[language]
+// Before
+[broken code]
+
+// After
+[fixed code]
+```
+
+### 7. Prevention
+🛡️ [How to prevent this in the future]
 ```
 
 ---
 
-## 3. Gather Evidence
+## Examples
 
-Collect data BEFORE forming hypotheses:
-
-**PowerShell:**
-```powershell
-# Get error details
-{relevant commands to capture error info}
-
-# Check logs
-Get-Content logs/error.log -Tail 50
-
-# Check environment
-{relevant environment checks}
 ```
-
-**Bash:**
-```bash
-# Get error details
-{relevant commands to capture error info}
-
-# Check logs
-tail -50 logs/error.log
-
-# Check environment
-{relevant environment checks}
-```
-
-Document evidence in DEBUG.md.
-
----
-
-## 4. Form Hypotheses
-
-Based on evidence, list possible causes:
-
-```markdown
-## Hypotheses
-
-| # | Hypothesis | Likelihood | Status |
-|---|------------|------------|--------|
-| 1 | {cause 1} | 80% | UNTESTED |
-| 2 | {cause 2} | 15% | UNTESTED |
-| 3 | {cause 3} | 5% | UNTESTED |
+/debug login not working
+/debug API returns 500
+/debug form doesn't submit
+/debug data not saving
 ```
 
 ---
 
-## 5. Test Hypotheses
+## Key Principles
 
-Test highest likelihood first:
-
-```markdown
-## Attempts
-
-### Attempt 1
-**Testing:** H1 — {hypothesis}
-**Action:** {what you did to test}
-**Result:** {outcome}
-**Conclusion:** {CONFIRMED | ELIMINATED | INCONCLUSIVE}
-```
-
----
-
-## 6. Apply Fix (If Root Cause Found)
-
-When root cause confirmed:
-
-1. Implement fix
-2. Run original failing scenario
-3. Verify PASSES
-4. Check for regressions
-
-Update DEBUG.md:
-```markdown
-## Resolution
-
-**Root Cause:** {what was actually wrong}
-**Fix:** {what was changed}
-**Verified:** {how fix was verified}
-**Regression Check:** {what else was tested}
-```
-
----
-
-## 7. Handle 3-Strike Rule
-
-If 3 attempts fail on SAME approach:
-
-```
-⚠️ 3 FAILURES ON SAME APPROACH
-
-Action: STOP and reassess
-
-Options:
-1. Try fundamentally DIFFERENT approach
-2. /pause for fresh session context
-3. Ask user for additional information
-```
-
-Update DEBUG.md and recommend next steps.
-
----
-
-## 8. Commit Resolution
-
-If fixed:
-```bash
-git add -A
-git commit -m "fix: {brief description of fix}"
-```
-
-Update STATE.md with resolution.
-
-</process>
-
-<offer_next>
-
-**If Resolved:**
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- GSD ► BUG FIXED ✓
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Root cause: {what was wrong}
-Fix: {what was done}
-
-Committed: {hash}
-
-───────────────────────────────────────────────────────
-```
-
-**If Stuck After 3 Attempts:**
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- GSD ► DEBUG PAUSED ⏸
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-3 attempts exhausted on current approach.
-State saved to .gsd/DEBUG.md
-
-───────────────────────────────────────────────────────
-
-Options:
-• /debug {issue} — try different approach
-• /pause — save state for fresh session
-• Provide more context about the issue
-
-───────────────────────────────────────────────────────
-```
-
-</offer_next>
-
-<related>
-## Related
-
-### Workflows
-| Command | Relationship |
-|---------|--------------|
-| `/pause` | Use after 3 failed attempts |
-| `/resume` | Start fresh with documented state |
-| `/verify` | Re-verify after fixing issues |
-
-### Skills
-| Skill | Purpose |
-|-------|---------|
-| `debugger` | Detailed debugging methodology |
-| `context-health-monitor` | 3-strike rule |
-</related>
+- **Ask before assuming** - get full error context
+- **Test hypotheses** - don't guess randomly
+- **Explain why** - not just what to fix
+- **Prevent recurrence** - add tests, validation

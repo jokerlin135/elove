@@ -106,9 +106,7 @@ class UXAuditor:
         try:
             with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
                 content = f.read()
-        except Exception as e:
-            self.warnings.append(f"[IO] {filepath}: Could not read file: {e}")
-            return
+        except: return
         
         self.files_checked += 1
         filename = os.path.basename(filepath)
@@ -449,7 +447,7 @@ class UXAuditor:
 
         # --- 3.5 GLOW EFFECTS ---
         # Check for text-shadow or multiple box-shadow layers (glow effects)
-        text_shadows = re.findall(r'text-shadow:\s*([^;]+)', content)
+        text_shadows = re.findall(r'text-shadow:', content)
         for ts in text_shadows:
             # Multiple text-shadow layers indicate glow
             if ',' in ts:

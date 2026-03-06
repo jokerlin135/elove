@@ -19,17 +19,20 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
 
   if (!r2Prefix) return new Response("Site not found", { status: 404 });
 
-  // 3. Map path to file
-  const path = url.pathname === "/" ? "index.html" : `${url.pathname.slice(1)}.html`;
-  const r2Key = `${r2Prefix}${path}`;
+  // 3. Map path to file (with path traversal protection)
+  const rawPath = url.pathname === "/" ? "index.html" : `${url.pathname.slice(1)}.html`;
+  if (rawPath.includes("..") || rawPath.includes("//")) {
+    return new Response("Forbidden", { status: 403 });
+  }
+  const r2Key = `${r2Prefix}${rawPath}`;
 
   // 4. Fetch from R2
   const object = await env.R2.get(r2Key);
   if (!object) return new Response("Page not found", { status: 404 });
 
   const body = await object.arrayBuffer();
-  const contentType = path.endsWith(".html") ? "text/html" : "application/octet-stream";
-  const cacheControl = path.endsWith(".html") ? "public, max-age=300" : "public, max-age=31536000, immutable";
+  const contentType = rawPath.endsWith(".html") ? "text/html" : "application/octet-stream";
+  const cacheControl = rawPath.endsWith(".html") ? "public, max-age=300" : "public, max-age=31536000, immutable";
 
   // 5. Watermark injection (free plan)
   const plan = await env.ROUTING_TABLE.get(`plan:${hostname}`);

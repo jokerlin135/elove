@@ -63,6 +63,18 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-3">
           <Link
+            href="/templates"
+            className="px-4 py-2 text-sm text-white/70 hover:text-white transition-colors"
+          >
+            Mẫu thiệp
+          </Link>
+          <Link
+            href="/pricing"
+            className="px-4 py-2 text-sm text-white/70 hover:text-white transition-colors"
+          >
+            Gói dịch vụ
+          </Link>
+          <Link
             href="/login"
             className="px-4 py-2 text-sm text-white/70 hover:text-white transition-colors"
           >
@@ -154,11 +166,10 @@ export default function Home() {
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-medium truncate">{t.name}</span>
                     <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${
-                        t.type === "PREMIUM"
-                          ? "bg-rose-500/20 text-rose-300"
-                          : "bg-white/10 text-white/50"
-                      }`}
+                      className={`text-xs px-2 py-0.5 rounded-full ${t.type === "PREMIUM"
+                        ? "bg-rose-500/20 text-rose-300"
+                        : "bg-white/10 text-white/50"
+                        }`}
                     >
                       {t.type}
                     </span>
@@ -179,6 +190,72 @@ export default function Home() {
             >
               Xem tất cả mẫu →
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section className="py-16 px-6 bg-white/[0.02]">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-3">3 bước đơn giản</h2>
+            <p className="text-white/40">Từ ý tưởng đến thiệp cưới online chỉ trong vài phút</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              { step: "1", title: "Chọn mẫu", desc: "Duyệt kho mẫu thiệp và chọn phong cách yêu thích", icon: "🎨" },
+              { step: "2", title: "Tùy chỉnh", desc: "Chỉnh sửa nội dung, ảnh, màu sắc theo ý bạn", icon: "✏️" },
+              { step: "3", title: "Chia sẻ", desc: "Gửi link hoặc QR code cho khách mời qua Zalo, SMS", icon: "🚀" },
+            ].map((s, i) => (
+              <div key={s.step} className="relative text-center">
+                {i < 2 && (
+                  <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-px bg-gradient-to-r from-rose-500/30 to-transparent" />
+                )}
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-rose-500/20 to-pink-600/20 flex items-center justify-center text-2xl mx-auto mb-4 relative">
+                  {s.icon}
+                  <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-rose-500 text-white text-xs flex items-center justify-center font-bold">
+                    {s.step}
+                  </span>
+                </div>
+                <h3 className="font-semibold text-base mb-2">{s.title}</h3>
+                <p className="text-sm text-white/40">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="py-16 px-6">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl font-bold mb-3">Khách hàng nói gì?</h2>
+            <p className="text-white/40">Hơn 10,000 cặp đôi đã tin dùng ELove</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-5">
+            {[
+              { name: "Minh & Hà", location: "TP.HCM", text: "Thiệp rất đẹp, khách mời ai cũng khen. RSVP tiện lợi, không cần gọi từng người!", stars: 5 },
+              { name: "Tuấn & Linh", location: "Hà Nội", text: "Từ lúc chọn mẫu đến khi gửi cho khách chỉ mất 30 phút. Tuyệt vời!", stars: 5 },
+              { name: "Phong & Mai", location: "Đà Nẵng", text: "Tính năng mừng cưới online rất hay! Khách ở xa vẫn có thể gửi quà dễ dàng.", stars: 5 },
+            ].map((t) => (
+              <div key={t.name} className="p-5 rounded-2xl bg-white/5 border border-white/8 hover:border-rose-500/20 transition-colors">
+                <div className="flex gap-0.5 mb-3 text-amber-400 text-sm">
+                  {Array.from({ length: t.stars }).map((_, i) => (
+                    <span key={i}>★</span>
+                  ))}
+                </div>
+                <p className="text-sm text-white/60 leading-relaxed mb-4">&ldquo;{t.text}&rdquo;</p>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center text-xs font-bold">
+                    {t.name[0]}
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-white">{t.name}</p>
+                    <p className="text-[10px] text-white/30">{t.location}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>

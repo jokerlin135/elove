@@ -61,7 +61,8 @@ export default function LoginPage() {
       <Auth
         supabaseClient={supabase}
         appearance={appearance}
-        providers={[]}
+        providers={["google"]}
+        redirectTo={`${process.env.NEXT_PUBLIC_APP_URL ?? ""}/auth/callback`}
         view="sign_in"
         localization={{
           variables: {

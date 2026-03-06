@@ -19,11 +19,10 @@ export function ProjectCard({ id, title, slug, status, onArchive }: ProjectCardP
         <div className="flex items-start justify-between mb-1">
           <h3 className="font-medium text-sm truncate">{title}</h3>
           <span
-            className={`text-xs px-2 py-0.5 rounded-full ml-2 shrink-0 ${
-              status === "published"
+            className={`text-xs px-2 py-0.5 rounded-full ml-2 shrink-0 ${status === "published"
                 ? "bg-green-500/15 text-green-400"
                 : "bg-white/10 text-white/40"
-            }`}
+              }`}
           >
             {status === "published" ? "Live" : "Draft"}
           </span>
@@ -34,24 +33,27 @@ export function ProjectCard({ id, title, slug, status, onArchive }: ProjectCardP
             href={`/editor/${id}`}
             className="flex-1 text-center py-1.5 text-xs bg-rose-500/15 text-rose-300 rounded-lg hover:bg-rose-500/25 transition-colors"
           >
-            Chinh sua
+            Chỉnh sửa
           </Link>
           <button
             onClick={() => {
-              if (confirm("Copy link thiep?")) {
-                navigator.clipboard.writeText(
-                  `${window.location.origin}/w/${slug}`,
-                );
-              }
+              navigator.clipboard.writeText(
+                `${window.location.origin}/${slug}`,
+              );
+              alert("Đã sao chép link thiệp!");
             }}
             className="flex-1 py-1.5 text-xs bg-white/5 text-white/50 rounded-lg hover:bg-white/10 transition-colors"
           >
-            Chia se
+            Chia sẻ
           </button>
           <button
-            onClick={() => onArchive(id)}
+            onClick={() => {
+              if (confirm("Bạn có chắc muốn xóa thiệp này?")) {
+                onArchive(id);
+              }
+            }}
             className="py-1.5 px-2 text-xs text-white/20 hover:text-red-400 transition-colors"
-            title="Xoa"
+            title="Xóa"
           >
             &times;
           </button>
@@ -60,3 +62,4 @@ export function ProjectCard({ id, title, slug, status, onArchive }: ProjectCardP
     </div>
   );
 }
+

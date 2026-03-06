@@ -29,7 +29,13 @@ export async function handleRsvp(request: Request, env: Env): Promise<Response> 
     return new Response("Not found", { status: 404 });
   }
 
-  const body = (await request.json()) as RsvpPayload;
+  let body: RsvpPayload;
+  try {
+    body = (await request.json()) as RsvpPayload;
+  } catch {
+    return Response.json({ error: "JSON không hợp lệ" }, { status: 400 });
+  }
+
   const { guestName, attending, partySize = 1, email, dietaryNotes } = body;
 
   if (!guestName || attending === undefined) {
@@ -48,7 +54,7 @@ export async function handleRsvp(request: Request, env: Env): Promise<Response> 
   const isOverQuota = current >= max;
 
   // Insert to DB via internal API
-  await fetch(`${env.API_URL}/internal/rsvp`, {
+  const apiRes = await fetch(`${env.API_URL}/internal/rsvp`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -65,7 +71,11 @@ export async function handleRsvp(request: Request, env: Env): Promise<Response> 
     }),
   });
 
-  // Increment quota counter
+  if (!apiRes.ok) {
+    return Response.json({ error: "Lỗi hệ thống, vui lòng thử lại" }, { status: 500 });
+  }
+
+  // Increment quota counter only after successful DB insert
   await env.KV.put(quotaKey, String(current + partySize), {
     expirationTtl: 86400 * 365,
   });

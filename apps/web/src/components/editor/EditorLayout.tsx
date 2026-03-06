@@ -3,6 +3,7 @@ import { PageTree } from "./PageTree";
 import { Canvas } from "./Canvas";
 import { PropertyPanel } from "./PropertyPanel";
 import { Toolbar } from "./Toolbar";
+import { ComponentLibrary } from "./ComponentLibrary";
 
 interface EditorLayoutProps {
   projectId: string;
@@ -10,16 +11,26 @@ interface EditorLayoutProps {
 
 export function EditorLayout({ projectId }: EditorLayoutProps) {
   return (
-    <div className="flex flex-col h-screen bg-gray-100 overflow-hidden">
+    <div className="flex flex-col h-screen bg-[#080810] overflow-hidden">
       <Toolbar projectId={projectId} />
       <div className="flex flex-1 overflow-hidden">
-        <aside className="w-56 bg-white border-r border-gray-200 flex flex-col overflow-y-auto shrink-0">
-          <PageTree />
+        {/* Left — Page Tree + Component Library */}
+        <aside className="w-60 bg-[#0d0d1a] border-r border-white/5 flex flex-col overflow-hidden shrink-0">
+          <div className="border-b border-white/5">
+            <PageTree />
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <ComponentLibrary />
+          </div>
         </aside>
-        <main className="flex-1 overflow-auto p-4">
+
+        {/* Center — Canvas */}
+        <main className="flex-1 overflow-auto">
           <Canvas />
         </main>
-        <aside className="w-72 bg-white border-l border-gray-200 overflow-y-auto shrink-0">
+
+        {/* Right — Property Panel */}
+        <aside className="w-72 bg-[#0d0d1a] border-l border-white/5 overflow-y-auto shrink-0">
           <PropertyPanel />
         </aside>
       </div>

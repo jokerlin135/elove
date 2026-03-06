@@ -145,7 +145,7 @@ describe("BillingService", () => {
     });
 
     it("includes returnUrl and cancelUrl with correct domain", async () => {
-      process.env.ELOVE_APP_URL = "https://test.elove.vn";
+      process.env.NEXT_PUBLIC_APP_URL = "https://test.elove.vn";
       const service = new BillingService(mockPayos, mockSupa as any);
 
       await service.createCheckoutLink({
@@ -160,7 +160,7 @@ describe("BillingService", () => {
       expect(call.returnUrl).toContain("test.elove.vn");
       expect(call.cancelUrl).toContain("test.elove.vn");
 
-      delete process.env.ELOVE_APP_URL;
+      delete process.env.NEXT_PUBLIC_APP_URL;
     });
   });
 

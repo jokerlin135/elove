@@ -119,7 +119,27 @@ export const billingRouter = router({
       }
 
       const handler = new WebhookHandler(ctx.supa);
-      await handler.process(input.eventId, webhookPayload, input.metadata);
+
+      // Cross-reference tenant_id from our billing_events record
+      // to prevent forged metadata from activating arbitrary tenants
+      const billingEvent = await ctx.supa.findFirst<{
+        tenant_id: string;
+        metadata: { planId?: string; billingCycle?: string };
+      }>("billing_events", {
+        "metadata->>orderCode": String(input.data.orderCode),
+      });
+
+      const verifiedMetadata = billingEvent
+        ? {
+          tenant_id: billingEvent.tenant_id,
+          plan_id: billingEvent.metadata?.planId ?? input.metadata.plan_id,
+          billing_cycle:
+            billingEvent.metadata?.billingCycle ??
+            input.metadata.billing_cycle,
+        }
+        : input.metadata;
+
+      await handler.process(input.eventId, webhookPayload, verifiedMetadata);
 
       return { received: true };
     }),

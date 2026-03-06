@@ -41,7 +41,7 @@ export class BillingService {
   constructor(
     private readonly payos: PayOS,
     private readonly supa: SupabaseAdminDb,
-  ) {}
+  ) { }
 
   async createCheckoutLink({
     tenantId,
@@ -63,8 +63,8 @@ export class BillingService {
       );
     }
 
-    const orderCode = Date.now();
-    const appUrl = process.env.ELOVE_APP_URL ?? "https://elove.vn";
+    const orderCode = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://elove.vn";
 
     const result = await this.payos.paymentRequests.create({
       orderCode,
@@ -81,7 +81,7 @@ export class BillingService {
         event_type: "payment_initiated",
         metadata: { orderCode, planId, billingCycle },
       })
-      .catch(() => {});
+      .catch(() => { });
 
     return { checkoutUrl: result.checkoutUrl, orderCode };
   }

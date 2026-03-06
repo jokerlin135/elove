@@ -31,15 +31,15 @@ export function ProjectGrid() {
       {active.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <div className="text-6xl mb-4 opacity-30">&#9825;</div>
-          <h3 className="text-lg font-medium mb-2">Chua co thiep nao</h3>
+          <h3 className="text-lg font-medium mb-2">Chưa có thiệp nào</h3>
           <p className="text-white/30 text-sm mb-6">
-            Tao thiep cuoi dau tien cua ban ngay bay gio
+            Tạo thiệp cưới đầu tiên của bạn ngay bây giờ
           </p>
           <button
             onClick={() => setShowCreate(true)}
             className="px-6 py-2.5 bg-gradient-to-r from-rose-500 to-pink-600 rounded-full text-sm font-medium"
           >
-            Tao thiep ngay
+            Tạo thiệp ngay
           </button>
         </div>
       ) : (
@@ -59,7 +59,7 @@ export function ProjectGrid() {
             className="rounded-2xl border-2 border-dashed border-white/10 hover:border-rose-500/30 transition-colors flex flex-col items-center justify-center aspect-[4/5] text-white/30 hover:text-rose-400"
           >
             <span className="text-3xl mb-2">+</span>
-            <span className="text-sm">Tao thiep moi</span>
+            <span className="text-sm">Tạo thiệp mới</span>
           </button>
         </div>
       )}

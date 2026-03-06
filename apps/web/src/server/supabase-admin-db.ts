@@ -7,7 +7,7 @@ export class SupabaseAdminDb {
   constructor(
     private readonly supabaseUrl: string,
     private readonly serviceKey: string,
-  ) {}
+  ) { }
 
   private get headers() {
     return {
@@ -54,13 +54,21 @@ export class SupabaseAdminDb {
     return (await res.json()) as T[];
   }
 
+  private async assertOk(res: Response, operation: string, table: string): Promise<void> {
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`SupabaseAdminDb ${operation} on "${table}" failed (${res.status}): ${body}`);
+    }
+  }
+
   /** INSERT INTO table VALUES (data) */
   async insert(table: string, data: Record<string, unknown>): Promise<void> {
-    await fetch(`${this.supabaseUrl}/rest/v1/${table}`, {
+    const res = await fetch(`${this.supabaseUrl}/rest/v1/${table}`, {
       method: "POST",
       headers: { ...this.headers, Prefer: "return=minimal" },
       body: JSON.stringify(data),
     });
+    await this.assertOk(res, "insert", table);
   }
 
   /**
@@ -71,7 +79,7 @@ export class SupabaseAdminDb {
     table: string,
     data: Record<string, unknown>,
   ): Promise<void> {
-    await fetch(`${this.supabaseUrl}/rest/v1/${table}`, {
+    const res = await fetch(`${this.supabaseUrl}/rest/v1/${table}`, {
       method: "POST",
       headers: {
         ...this.headers,
@@ -79,6 +87,7 @@ export class SupabaseAdminDb {
       },
       body: JSON.stringify(data),
     });
+    await this.assertOk(res, "insertIgnore", table);
   }
 
   /**
@@ -86,7 +95,7 @@ export class SupabaseAdminDb {
    * Uses PostgREST resolution=merge-duplicates
    */
   async upsert(table: string, data: Record<string, unknown>): Promise<void> {
-    await fetch(`${this.supabaseUrl}/rest/v1/${table}`, {
+    const res = await fetch(`${this.supabaseUrl}/rest/v1/${table}`, {
       method: "POST",
       headers: {
         ...this.headers,
@@ -94,6 +103,7 @@ export class SupabaseAdminDb {
       },
       body: JSON.stringify(data),
     });
+    await this.assertOk(res, "upsert", table);
   }
 
   /** UPDATE table SET data WHERE match */
@@ -103,10 +113,11 @@ export class SupabaseAdminDb {
     data: Record<string, unknown>,
   ): Promise<void> {
     const qs = this.buildQs(match);
-    await fetch(`${this.supabaseUrl}/rest/v1/${table}?${qs}`, {
+    const res = await fetch(`${this.supabaseUrl}/rest/v1/${table}?${qs}`, {
       method: "PATCH",
       headers: { ...this.headers, Prefer: "return=minimal" },
       body: JSON.stringify(data),
     });
+    await this.assertOk(res, "update", table);
   }
 }

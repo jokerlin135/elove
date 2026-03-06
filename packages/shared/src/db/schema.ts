@@ -39,9 +39,9 @@ export const plans = pgTable("plans", {
   id: text("id").primaryKey(), // 'free' | 'pro' | 'lifetime'
   name: text("name").notNull(),
   payos_price_refs: jsonb("payos_price_refs").$type<{
-    monthly?: string;
-    yearly?: string;
-    lifetime?: string;
+    monthly?: number;
+    yearly?: number;
+    lifetime?: number;
   }>(),
   billing_type: text("billing_type").notNull(), // 'free' | 'recurring' | 'one_time'
 });
@@ -87,10 +87,15 @@ export const templates = pgTable("templates", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
+  category: text("category").notNull().default("wedding"), // wedding | birthday | graduation | event | anniversary | greeting | other
+  description: text("description"),
+  thumbnail_url: text("thumbnail_url"),
   status: text("status").notNull().default("draft"), // draft | published | archived
   current_version: integer("current_version").notNull().default(1),
   r2_bundle_key: text("r2_bundle_key").notNull(), // e.g. elove/templates/{id}/v1/bundle.json
   plan_required: text("plan_required").notNull().default("free"),
+  view_count: integer("view_count").notNull().default(0),
+  heart_count: integer("heart_count").notNull().default(0),
   created_at: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -201,6 +206,22 @@ export const guestbook_entries = pgTable(
     created_at: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [index("gb_project_idx").on(t.project_id)],
+);
+
+export const gifts = pgTable(
+  "gifts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    project_id: uuid("project_id")
+      .notNull()
+      .references(() => projects.id),
+    guest_name: text("guest_name").notNull(),
+    amount: integer("amount").notNull(), // VND
+    message: text("message"),
+    method: text("method").notNull().default("bank_transfer"), // bank_transfer | momo | cash
+    created_at: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("gifts_project_idx").on(t.project_id)],
 );
 
 // ============ QUOTA ============
